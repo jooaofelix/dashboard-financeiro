@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Stethoscope, Wallet, Wallet2 } from "lucide-react";
+import { useData } from "@/lib/data-context";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -12,6 +13,7 @@ const links = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { usandoFirebase } = useData();
 
   return (
     <aside className="hidden sm:flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white px-4 py-6">
@@ -46,7 +48,9 @@ export default function Sidebar() {
       </nav>
 
       <div className="mt-auto rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-500">
-        Dados salvos localmente neste navegador.
+        {usandoFirebase
+          ? "Dados sincronizados com o Firebase."
+          : "Dados salvos localmente neste navegador."}
       </div>
     </aside>
   );
