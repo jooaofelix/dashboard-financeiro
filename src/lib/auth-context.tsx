@@ -9,12 +9,14 @@ import {
   useState,
 } from "react";
 import {
+  GoogleAuthProvider,
   User,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInAnonymously,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   updateProfile,
 } from "firebase/auth";
@@ -46,6 +48,9 @@ interface AuthContextValue {
   modoLocal: boolean;
   entrar: (email: string, senha: string) => Promise<void>;
   criarConta: (nome: string, email: string, senha: string) => Promise<void>;
+  entrarComGoogle: () => Promise<void>;
+  /** O botão do Google só existe com Firebase: sem ele não há o que autenticar. */
+  googleDisponivel: boolean;
   entrarComoConvidado: () => Promise<void>;
   recuperarSenha: (email: string) => Promise<void>;
   sair: () => Promise<void>;
@@ -79,6 +84,15 @@ function mensagemDeErro(erro: unknown): string {
       return "Sem conexão com o servidor. Verifique sua internet.";
     case "auth/operation-not-allowed":
       return "Este método de login não está habilitado no Firebase.";
+    case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
+      return "Login com o Google cancelado.";
+    case "auth/popup-blocked":
+      return "O navegador bloqueou a janela do Google. Libere o pop-up e tente de novo.";
+    case "auth/account-exists-with-different-credential":
+      return "Já existe uma conta com este e-mail criada por outro método. Entre com e-mail e senha.";
+    case "auth/unauthorized-domain":
+      return "Este domínio não está autorizado no Firebase Authentication.";
     default:
       return "Não foi possível concluir. Tente novamente.";
   }
@@ -163,6 +177,15 @@ function useAuthFirebase(): AuthContextValue {
             setUsuarioFirebase({ ...credencial.user });
           }
         }),
+      entrarComGoogle: () =>
+        executar(() => {
+          const provedor = new GoogleAuthProvider();
+          // Sempre pedir a conta: sem isso o Google reusa a última sessão em
+          // silêncio, e quem tem mais de uma conta não consegue trocar.
+          provedor.setCustomParameters({ prompt: "select_account" });
+          return signInWithPopup(auth!, provedor);
+        }),
+      googleDisponivel: true,
       entrarComoConvidado: () => executar(() => signInAnonymously(auth!)),
       recuperarSenha: (email) =>
         executar(() => sendPasswordResetEmail(auth!, email.trim())),
@@ -205,6 +228,12 @@ function useAuthLocal(): AuthContextValue {
           convidado: false,
         });
       },
+      entrarComGoogle: async () => {
+        throw new ErroDeAutenticacao(
+          "Entrar com o Google exige o Firebase configurado."
+        );
+      },
+      googleDisponivel: false,
       entrarComoConvidado: async () => {
         setSessao({
           uid: "local-convidado",

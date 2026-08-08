@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth-context";
 import PeriodPicker from "./PeriodPicker";
 import ThemeToggle from "./ThemeToggle";
 import { BaseBadge, BaseWordmark } from "./BaseLogo";
+import Onboarding from "./Onboarding";
 import { iniciais } from "@/lib/format";
 
 interface ItemNav {
@@ -212,7 +213,7 @@ function normalizarRota(pathname: string) {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { pronto, ocupado } = useData();
+  const { pronto, ocupado, precisaOnboarding } = useData();
   const { autenticado, carregando } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
@@ -240,6 +241,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (naEntrada) return <>{children}</>;
 
   if (carregando || !autenticado) return <TelaDeEspera />;
+
+  // Workspace recém-criado: configura antes de entrar no app.
+  if (precisaOnboarding) return <Onboarding />;
 
   return (
     <div className="flex min-h-screen">

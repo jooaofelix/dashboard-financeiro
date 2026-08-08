@@ -4,9 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import {
@@ -52,21 +50,14 @@ export function caminhoWorkspace(uid: string) {
   return `usuarios/${uid}`;
 }
 
-/** Gerar 12 meses de histórico não é barato — memoriza por segmento. */
-const cacheDemo = new Map<string, BaseDados>();
-function baseDemo(segmentoId: string): BaseDados {
-  const existente = cacheDemo.get(segmentoId);
-  if (existente) return existente;
-  const nova = gerarBaseDemo(segmentoId);
-  cacheDemo.set(segmentoId, nova);
-  return nova;
-}
-
 interface Crud<T extends { id: string }> {
   add: (item: Omit<T, "id">) => void;
   update: (id: string, patch: Partial<T>) => void;
   remove: (id: string) => void;
 }
+
+/** Referência estável: um `[]` novo a cada render invalidaria o cache do hook. */
+const VAZIO: never[] = [];
 
 const CRUD_INERTE: Crud<{ id: string }> = {
   add: () => {},
@@ -86,6 +77,13 @@ export interface DataContextValue extends BaseDados {
   /** Recria a base do workspace atual com os dados de exemplo do segmento. */
   recarregarDemo: (segmentoId: string) => Promise<void>;
   limparTudo: () => Promise<void>;
+  /** Workspace ainda não configurado: a tela de boas-vindas assume. */
+  precisaOnboarding: boolean;
+  concluirOnboarding: (opcoes: {
+    segmentoId: string;
+    empresa: string;
+    comExemplo: boolean;
+  }) => Promise<void>;
   usandoFirebase: boolean;
   pronto: boolean;
   ocupado: boolean;
@@ -118,22 +116,24 @@ function useColecaoLocal<T extends { id: string }>(chave: string, inicial: T[]) 
 }
 
 function useDadosLocais(uid: string | null) {
-  const demo = baseDemo(SEGMENTO_PADRAO);
   // Sem sessão a chave é descartável: o conteúdo nunca chega à tela porque o
   // AppShell só monta o app autenticado.
   const prefixo = `base:${uid ?? "anonimo"}`;
 
-  const clientes = useColecaoLocal<Cliente>(`${prefixo}:clientes`, demo.clientes);
-  const servicos = useColecaoLocal<Servico>(`${prefixo}:servicos`, demo.servicos);
+  // Workspace novo nasce vazio nos dois modos. Quem decide se entra com a base
+  // de exemplo é o onboarding — encher a conta de alguém com dados fictícios
+  // sem perguntar não é aceitável num produto de verdade.
+  const clientes = useColecaoLocal<Cliente>(`${prefixo}:clientes`, VAZIO as Cliente[]);
+  const servicos = useColecaoLocal<Servico>(`${prefixo}:servicos`, VAZIO as Servico[]);
   const profissionais = useColecaoLocal<Profissional>(
     `${prefixo}:profissionais`,
-    demo.profissionais
+    VAZIO as Profissional[]
   );
   const atendimentos = useColecaoLocal<Atendimento>(
     `${prefixo}:atendimentos`,
-    demo.atendimentos
+    VAZIO as Atendimento[]
   );
-  const transacoes = useColecaoLocal<Transacao>(`${prefixo}:transacoes`, demo.transacoes);
+  const transacoes = useColecaoLocal<Transacao>(`${prefixo}:transacoes`, VAZIO as Transacao[]);
   const [config, setConfig] = useLocalStorage<Configuracao>(
     `${prefixo}:config`,
     configuracaoPadrao(SEGMENTO_PADRAO)
@@ -147,13 +147,20 @@ function useDadosLocais(uid: string | null) {
   const recarregarDemo = useCallback(
     async (segmentoId: string) => {
       const base = gerarBaseDemo(segmentoId);
-      cacheDemo.set(segmentoId, base);
       clientes.substituir(base.clientes);
       servicos.substituir(base.servicos);
       profissionais.substituir(base.profissionais);
       atendimentos.substituir(base.atendimentos);
       transacoes.substituir(base.transacoes);
-      setConfig(configuracaoPadrao(segmentoId));
+      // Mesma semântica do Firestore (merge): recarregar o exemplo troca os
+      // padrões do segmento, mas não apaga o nome do negócio nem a marca de
+      // onboarding — senão limpar a base depois jogaria o usuário de volta na
+      // tela de boas-vindas.
+      setConfig((anterior) => ({
+        ...configuracaoPadrao(segmentoId),
+        empresa: anterior.empresa || configuracaoPadrao(segmentoId).empresa,
+        onboardingConcluido: anterior.onboardingConcluido,
+      }));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [setConfig, prefixo]
@@ -255,9 +262,6 @@ function useDadosFirestore(uid: string | null, setOcupado: (v: boolean) => void)
     configuracaoPadrao(SEGMENTO_PADRAO)
   );
 
-  /** Qual workspace já foi semeado — reinicia quando a conta muda. */
-  const workspaceSemeado = useRef<string | null>(null);
-
   const recarregarDemo = useCallback(
     async (segmentoId: string) => {
       if (!raiz) return;
@@ -283,22 +287,6 @@ function useDadosFirestore(uid: string | null, setOcupado: (v: boolean) => void)
       setOcupado(false);
     }
   }, [raiz, setOcupado]);
-
-  // Workspace novo: entra com a base de demonstração para o painel não abrir vazio.
-  useEffect(() => {
-    if (!raiz || !db || !clientes.carregado || !configDoc.carregado) return;
-    if (workspaceSemeado.current === raiz) return;
-    workspaceSemeado.current = raiz;
-    if (clientes.items.length > 0 || atendimentos.items.length > 0) return;
-    void recarregarDemo(configDoc.valor.segmentoId || SEGMENTO_PADRAO);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    raiz,
-    clientes.carregado,
-    configDoc.carregado,
-    clientes.items.length,
-    atendimentos.items.length,
-  ]);
 
   return {
     clientes: clientes.items,
@@ -334,6 +322,43 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // divergência de hidratação (e formatação de moeda inconsistente).
   const montado = useMontado();
 
+  const semDados =
+    dados.clientes.length === 0 &&
+    dados.atendimentos.length === 0 &&
+    dados.transacoes.length === 0;
+
+  /**
+   * Só pede configuração inicial quando o workspace nunca foi configurado *e*
+   * está vazio. A segunda condição protege quem já usava o sistema antes da
+   * tela existir: com dados lá dentro, ninguém é mandado para o onboarding.
+   */
+  const precisaOnboarding =
+    montado && uid !== null && dados.carregado && !dados.config.onboardingConcluido && semDados;
+
+  const concluirOnboarding = useCallback(
+    async ({
+      segmentoId,
+      empresa,
+      comExemplo,
+    }: {
+      segmentoId: string;
+      empresa: string;
+      comExemplo: boolean;
+    }) => {
+      // A base de exemplo entra antes: `recarregarDemo` reescreve a
+      // configuração com os padrões do segmento, então o nome da empresa e a
+      // marca de concluído precisam vir depois para não serem sobrescritos.
+      if (comExemplo) await dados.recarregarDemo(segmentoId);
+      dados.salvarConfig({
+        ...(comExemplo ? {} : configuracaoPadrao(segmentoId)),
+        segmentoId,
+        empresa: empresa.trim(),
+        onboardingConcluido: true,
+      });
+    },
+    [dados]
+  );
+
   const value = useMemo<DataContextValue>(
     () => ({
       // Sem sessão nada é exposto — nem o resíduo do último workspace aberto.
@@ -354,11 +379,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       transacoesCrud: uid ? dados.transacoesCrud : (CRUD_INERTE as Crud<Transacao>),
       recarregarDemo: dados.recarregarDemo,
       limparTudo: dados.limparTudo,
+      precisaOnboarding,
+      concluirOnboarding,
       usandoFirebase: isFirebaseConfigured,
       pronto: montado && uid !== null && dados.carregado,
       ocupado,
     }),
-    [dados, uid, montado, ocupado]
+    [dados, uid, montado, ocupado, precisaOnboarding, concluirOnboarding]
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

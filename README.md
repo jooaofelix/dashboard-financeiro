@@ -47,8 +47,10 @@ as sugestões.
 
 ## Telas
 
-- **Entrar** — autenticação por e-mail e senha, recuperação de senha e acesso de
+- **Entrar** — e-mail e senha, **Google**, recuperação de senha e acesso de
   convidado. Todas as telas internas exigem sessão.
+- **Boas-vindas** — configuração inicial do workspace logo após criar a conta:
+  tipo de negócio, nome e se quer começar com dados de exemplo ou vazio.
 - **Dashboard** — alertas acionáveis, 8 indicadores com variação contra o período
   anterior, medidor de meta com ponto de equilíbrio, receita × despesa × resultado,
   composição das despesas, aging de recebíveis e concentração de clientes.
@@ -103,17 +105,25 @@ npm install
 npm run dev
 ```
 
-Acesse `http://localhost:3000`. Na primeira execução o app gera **12 meses de
-operação fictícia** para o segmento escolhido, de forma determinística — os
-gráficos não mudam a cada recarregamento. Em **Configurações › Dados** você
-recarrega o exemplo (útil ao trocar de segmento) ou começa do zero.
+Acesse `http://localhost:3000` e crie uma conta. Na tela de boas-vindas você
+escolhe o tipo de negócio, dá um nome a ele e decide se quer começar com **12
+meses de operação fictícia** (gerada de forma determinística — os gráficos não
+mudam a cada recarregamento) ou com o workspace vazio.
+
+Um workspace novo nunca é preenchido sem você pedir: encher a conta de alguém
+com dados fictícios por conta própria não é aceitável num produto de verdade. Em
+**Configurações › Dados** dá para recarregar o exemplo (útil ao trocar de
+segmento) ou apagar tudo a qualquer momento.
 
 ## Contas e isolamento de dados
 
 BASE é multi-inquilino: **cada conta tem o próprio workspace**, invisível para
-todas as outras. O login usa **Firebase Authentication** (e-mail/senha, com
-recuperação por e-mail) e oferece entrada como **convidado** (sessão anônima, com
+todas as outras. O login usa **Firebase Authentication** — e-mail/senha (com
+recuperação por e-mail), **Google** e **convidado** (sessão anônima, com
 workspace próprio e descartável).
+
+O botão do Google só aparece quando o Firebase está configurado: oferecer um
+login que não tem como funcionar é pior do que não oferecer.
 
 ```
 usuarios/{uid}                    perfil + configurações do workspace
@@ -151,8 +161,10 @@ nenhum. Serve para avaliar o produto inteiro sem infraestrutura.
 
 1. Crie um projeto em [console.firebase.google.com](https://console.firebase.google.com).
 2. Ative o **Firestore Database** (modo produção).
-3. Em **Build › Authentication › Sign-in method**, ative **E-mail/senha** (para o
-   login normal) e **Anônimo** (para o botão "Entrar como convidado").
+3. Em **Build › Authentication › Sign-in method**, ative **E-mail/senha**,
+   **Google** e **Anônimo** (este último para o botão "Entrar como convidado").
+   Em **Authentication › Settings › Authorized domains**, inclua o domínio onde
+   o app é publicado — sem isso o login com Google é recusado.
 4. Em **Configurações do projeto › Geral › Seus apps**, crie um app Web e copie as
    chaves do `firebaseConfig`.
 5. Copie `.env.local.example` para `.env.local` e preencha com essas chaves:
@@ -164,10 +176,8 @@ nenhum. Serve para avaliar o produto inteiro sem infraestrutura.
 6. Publique as regras de `firestore.rules` (aba **Regras** do Firestore, ou
    `firebase deploy --only firestore:rules`). Elas liberam leitura e escrita apenas
    para sessões autenticadas, coleção por coleção.
-7. Reinicie o `npm run dev`. Ao entrar pela primeira vez, o workspace da conta é
-   criado em `usuarios/{uid}` com a base de demonstração — o painel nunca abre
-   vazio. Em **Configurações › Dados** dá para recarregar o exemplo ou começar do
-   zero.
+7. Reinicie o `npm run dev`. Ao criar a conta, a tela de boas-vindas monta o
+   workspace em `usuarios/{uid}` com o segmento escolhido.
 
 Se as variáveis não forem definidas, o app continua no modo local sem erros.
 
@@ -213,6 +223,7 @@ src/
     …                   uma rota por tela (App Router, componentes de cliente)
   components/
     BaseLogo.tsx        marca: selo, símbolo e assinatura
+    Onboarding.tsx      configuração inicial do workspace
     …                   primitivos de UI, indicadores e chrome dos gráficos
   lib/
     auth-context.tsx    sessão: Firebase Auth ou perfil local

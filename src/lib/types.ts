@@ -106,6 +106,8 @@ export interface Configuracao {
   reservaMinimaCaixa: number;
   /** Janela do alerta "vence em breve". */
   diasAlertaVencimento: number;
+  /** Marca que o workspace já passou pela configuração inicial. */
+  onboardingConcluido?: boolean;
 }
 
 export interface BaseDados {
