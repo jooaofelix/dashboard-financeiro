@@ -27,6 +27,7 @@ import {
 import {
   calcularComissoes,
   calcularResumo,
+  faturamentoPorMes,
   montarDRE,
   rankingServicos,
   receitaPorFormaPagamento,
@@ -35,12 +36,21 @@ import {
 import {
   formatCompact,
   formatCurrency,
+  formatMonthKey,
   formatNumber,
   formatPercent,
+  monthKey,
+  todayISO,
 } from "@/lib/format";
 import { baixarCSV, numeroCSV } from "@/lib/csv";
+import {
+  incrementoMensal,
+  PlanoCrescimento,
+  planoDaConfig,
+  trajetoria,
+} from "@/lib/plano";
 
-type Relatorio = "dre" | "servicos" | "comissoes" | "recebimentos";
+type Relatorio = "dre" | "servicos" | "comissoes" | "recebimentos" | "plano";
 
 export default function RelatoriosPage() {
   const base = useBase();
@@ -63,8 +73,45 @@ export default function RelatoriosPage() {
     [base, periodo]
   );
 
+  const plano = useMemo(() => planoDaConfig(config), [config]);
+  const linhasPlano = useMemo(() => {
+    if (!plano) return [];
+    const realizado = faturamentoPorMes(base);
+    const mes = monthKey(todayISO());
+    return trajetoria(plano).map((m) => {
+      const feito = m.chave <= mes ? (realizado.get(m.chave) ?? 0) : null;
+      return {
+        ...m,
+        realizado: feito,
+        diferenca: feito === null ? null : feito - m.alvo,
+        emCurso: m.chave === mes,
+      };
+    });
+  }, [plano, base]);
+
   function exportar() {
     const sufixo = `${periodo.inicio}-${periodo.fim}`;
+    if (relatorio === "plano") {
+      baixarCSV(
+        `plano-de-crescimento-${sufixo}`,
+        ["Mês", "Marco", "Alvo", "Faturado", "Diferença", "Situação"],
+        linhasPlano.map((l) => [
+          l.chave,
+          l.numero,
+          numeroCSV(l.alvo),
+          l.realizado === null ? "" : numeroCSV(l.realizado),
+          l.diferenca === null ? "" : numeroCSV(l.diferenca),
+          l.realizado === null
+            ? "futuro"
+            : l.emCurso
+              ? "em curso"
+              : l.realizado >= l.alvo * 0.95
+                ? "no ritmo"
+                : "abaixo",
+        ])
+      );
+      return;
+    }
     if (relatorio === "dre") {
       baixarCSV(
         `dre-${sufixo}`,
@@ -168,6 +215,7 @@ export default function RelatoriosPage() {
             { id: "servicos", label: rotulos.servicos },
             { id: "comissoes", label: "Comissões" },
             { id: "recebimentos", label: "Recebimentos" },
+            ...(plano ? [{ id: "plano" as const, label: "Plano" }] : []),
           ]}
         />
       </div>
@@ -184,6 +232,9 @@ export default function RelatoriosPage() {
         />
       )}
       {relatorio === "recebimentos" && <RelatorioRecebimentos dados={recebimentos} />}
+      {relatorio === "plano" && plano && (
+        <RelatorioPlano plano={plano} linhas={linhasPlano} />
+      )}
     </div>
   );
 }
@@ -479,5 +530,108 @@ function RelatorioRecebimentos({
         </ResponsiveContainer>
       )}
     </ChartCard>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * O plano mês a mês em forma de tabela, exportável.
+ *
+ * O painel mostra a mesma coisa em gráfico; aqui o número é o produto — é a
+ * visão que vai para a reunião, para o contador ou para a planilha de quem
+ * quer conferir a conta.
+ */
+function RelatorioPlano({
+  plano,
+  linhas,
+}: {
+  plano: PlanoCrescimento;
+  linhas: {
+    chave: string;
+    numero: number;
+    alvo: number;
+    realizado: number | null;
+    diferenca: number | null;
+    emCurso: boolean;
+  }[];
+}) {
+  const fechados = linhas.filter((l) => l.realizado !== null && !l.emCurso);
+  const noRitmo = fechados.filter((l) => l.realizado! >= l.alvo * 0.95).length;
+  const passo = incrementoMensal(plano);
+
+  return (
+    <Panel
+      titulo="Plano de crescimento"
+      descricao={`De ${formatCurrency(plano.faturamentoBase)} a ${formatCurrency(
+        plano.metaReceitaMensal
+      )} por mês em ${plano.horizonteMeses} meses — ${
+        passo >= 0 ? "+" : "−"
+      }${formatCurrency(Math.abs(passo))} a cada mês.${
+        fechados.length > 0
+          ? ` ${noRitmo} de ${fechados.length} ${
+              fechados.length === 1 ? "mês fechado entregou" : "meses fechados entregaram"
+            } o alvo.`
+          : ""
+      }`}
+      padding={false}
+    >
+      <TableWrap>
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-line">
+              <Th>Mês</Th>
+              <Th align="right">Marco</Th>
+              <Th align="right">Alvo</Th>
+              <Th align="right">Faturado</Th>
+              <Th align="right">Diferença</Th>
+              <Th>Situação</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((l) => {
+              const entregue = l.realizado !== null && l.realizado >= l.alvo * 0.95;
+              return (
+                <tr key={l.chave} className="border-b border-line last:border-0">
+                  <Td className="whitespace-nowrap">{formatMonthKey(l.chave)}</Td>
+                  <Td className="tabular text-right">{l.numero}</Td>
+                  <Td className="tabular text-right text-ink">{formatCurrency(l.alvo)}</Td>
+                  <Td className="tabular text-right text-ink">
+                    {l.realizado === null ? "—" : formatCurrency(l.realizado)}
+                  </Td>
+                  {/* O mês em curso ainda não perdeu nada: pintar de vermelho
+                      uma diferença parcial seria acusar um mês que não acabou. */}
+                  <Td
+                    className={`tabular text-right ${
+                      l.diferenca === null || l.emCurso
+                        ? "text-ink-2"
+                        : l.diferenca >= 0
+                          ? "text-good-ink"
+                          : "text-crit-ink"
+                    }`}
+                  >
+                    {l.diferenca === null
+                      ? "—"
+                      : `${l.diferenca >= 0 ? "+" : "−"}${formatCurrency(Math.abs(l.diferenca))}`}
+                  </Td>
+                  {/* Situação nunca é só cor: o texto diz o mesmo que o sinal. */}
+                  <Td className="whitespace-nowrap">
+                    {l.realizado === null ? (
+                      <span className="text-ink-3">A cumprir</span>
+                    ) : l.emCurso ? (
+                      <span className="text-ink-2">Em curso</span>
+                    ) : entregue ? (
+                      <span className="text-good-ink">No ritmo</span>
+                    ) : (
+                      <span className="text-warn-ink">Abaixo</span>
+                    )}
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </TableWrap>
+    </Panel>
   );
 }

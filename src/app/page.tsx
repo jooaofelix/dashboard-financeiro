@@ -52,6 +52,7 @@ import {
   agruparDespesasPorCategoria,
   calcularResumo,
   gerarAlertas,
+  metaDoPeriodo,
   rankingClientes,
   serieMensal,
   variacao,
@@ -119,8 +120,9 @@ export default function DashboardPage() {
   const totalDespesas = despesas.reduce((soma, d) => soma + d.valor, 0);
   const sparkReceita = serie.map((p) => p.receita);
 
-  const mesesNoPeriodo = Math.max(1, serie.length);
-  const metaPeriodo = config.metaReceitaMensal * mesesNoPeriodo;
+  // Com plano em curso, a barra do período é a soma dos alvos da rampa mês a
+  // mês — não a meta final repetida, que só valeria no fim do prazo.
+  const metaPeriodo = useMemo(() => metaDoPeriodo(config, periodo), [config, periodo]);
   const progressoMeta = metaPeriodo > 0 ? (resumo.faturamento / metaPeriodo) * 100 : 0;
 
   const plano = useMemo(() => planoDaConfig(config), [config]);
@@ -232,6 +234,7 @@ export default function DashboardPage() {
         progresso={progressoMeta}
         pontoEquilibrio={resumo.pontoEquilibrio}
         receitaRecorrente={resumo.receitaRecorrenteMensal}
+        comPlano={plano !== null}
       />
 
       {plano && (
@@ -508,12 +511,14 @@ function MedidorMeta({
   progresso,
   pontoEquilibrio,
   receitaRecorrente,
+  comPlano,
 }: {
   atual: number;
   meta: number;
   progresso: number;
   pontoEquilibrio: number;
   receitaRecorrente: number;
+  comPlano: boolean;
 }) {
   const preenchido = Math.min(100, Math.max(0, progresso));
   const cor =
@@ -523,7 +528,11 @@ function MedidorMeta({
   return (
     <Panel
       titulo="Meta de faturamento"
-      descricao="Onde o período está em relação à meta e ao ponto de equilíbrio."
+      descricao={
+        comPlano
+          ? "Onde o período está em relação aos alvos da rampa e ao ponto de equilíbrio."
+          : "Onde o período está em relação à meta e ao ponto de equilíbrio."
+      }
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
         <div className="shrink-0">
@@ -559,7 +568,7 @@ function MedidorMeta({
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-3">
             <span className="flex items-center gap-1.5">
               <Target size={12} aria-hidden />
-              Meta {formatCurrency(meta)}
+              {comPlano ? "Alvo do período" : "Meta"} {formatCurrency(meta)}
             </span>
             {pontoEquilibrio > 0 && (
               <span className="flex items-center gap-1.5">

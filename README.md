@@ -67,8 +67,9 @@ as sugestões.
 - **Fluxo de caixa projetado** — saldo dia a dia em 30/60/90 dias a partir dos
   vencimentos em aberto e dos lançamentos recorrentes, com alerta de cruzamento da
   reserva mínima e resumo semanal.
-- **Relatórios** — DRE gerencial, margem por serviço, comissões da equipe e
-  recebimentos por forma de pagamento. Todos exportáveis em CSV.
+- **Relatórios** — DRE gerencial, margem por serviço, comissões da equipe,
+  recebimentos por forma de pagamento e o plano de crescimento mês a mês. Todos
+  exportáveis em CSV.
 - **Configurações** — segmento, dados da empresa, parâmetros financeiros, catálogo
   de serviços, equipe e gestão da base.
 
@@ -116,14 +117,25 @@ não valia para eles. O plano é editável em **Configurações › Plano de
 crescimento**, com um botão para recomeçar a partir do mês atual: seis meses
 depois, "de onde eu saí" já não é o mesmo lugar.
 
+Com um plano em curso, **a barra que o mês precisa vencer passa a ser o alvo da
+rampa** — no medidor, nos alertas e no relatório. Cobrar hoje a meta do fim do
+prazo transformaria todo mês de um plano saudável em fracasso. Um mês fechado
+abaixo do marco vira alerta no painel, já com o novo esforço recalculado sobre
+os meses que sobraram.
+
+Em **Relatórios › Plano**, a mesma trajetória em tabela, com situação por mês e
+exportação em CSV — a visão que vai para a reunião ou para a planilha de quem
+quer conferir a conta.
+
 ```bash
 npm run test:plano
 ```
 
-Verifica 28 cenários da matemática: rampa e marcos, virada de ano, alvo antes da
-partida e depois do prazo, meta abaixo do ponto de partida (redução planejada),
-tradução em atendimentos, diagnóstico no ritmo e fora dele, projeção do ritmo
-observado e o recálculo do incremento necessário.
+Verifica 41 cenários: rampa e marcos, virada de ano, alvo antes da partida e
+depois do prazo, meta abaixo do ponto de partida (redução planejada), tradução
+em atendimentos, diagnóstico no ritmo e fora dele, projeção do ritmo observado,
+recálculo do incremento necessário — e a regra de que a barra do mês é a rampa,
+não a meta final, inclusive nos alertas.
 
 ## Agenda
 

@@ -8,6 +8,7 @@ import {
   todayISO,
 } from "./format";
 import { dentroDoPeriodo, duracaoEmMeses, mesesDoPeriodo, Periodo } from "./periodo";
+import { alvoDoMes, avaliarPlano, planoDaConfig } from "./plano";
 import {
   Atendimento,
   BaseDados,
@@ -71,6 +72,11 @@ export function variacao(atual: number, anterior: number): number | null {
 
 function divisao(numerador: number, denominador: number): number {
   return denominador === 0 ? 0 : numerador / denominador;
+}
+
+/** Texto dos alertas — eles são strings prontas, não componentes. */
+function moeda(valor: number): string {
+  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -426,6 +432,23 @@ const FAIXAS_AGING = [
   { faixa: "31–60 dias", limite: 60 },
   { faixa: "60+ dias", limite: Infinity },
 ];
+
+/**
+ * A barra que o mês precisa vencer.
+ *
+ * Com um plano em curso, a barra é o alvo da rampa — cobrar hoje a meta do fim
+ * do prazo transformaria todo mês em fracasso e faria o plano perder o sentido.
+ * Sem plano, vale a meta mensal fixa.
+ */
+export function metaDoMes(config: Configuracao, mes: string): number {
+  const plano = planoDaConfig(config);
+  return plano ? alvoDoMes(plano, mes) : config.metaReceitaMensal;
+}
+
+/** A mesma barra somada mês a mês ao longo de um período de vários meses. */
+export function metaDoPeriodo(config: Configuracao, periodo: Periodo): number {
+  return mesesDoPeriodo(periodo).reduce((soma, mes) => soma + metaDoMes(config, mes), 0);
+}
 
 /**
  * Faturamento de competência de **todos** os meses com movimento, sem recorte
@@ -872,27 +895,54 @@ export function gerarAlertas(
     label: "Mês atual",
   };
   const resumoMes = calcularResumo(base, config, mesAtual, hoje);
-  const atingido = divisao(resumoMes.faturamento, config.metaReceitaMensal) * 100;
+  const alvoMes = metaDoMes(config, monthKey(hoje));
+  const atingido = divisao(resumoMes.faturamento, alvoMes) * 100;
   const diaDoMes = Number(hoje.slice(8, 10));
   const diasNoMes = Number(lastDayOfMonth(hoje).slice(8, 10));
   const mesPercorrido = diaDoMes / diasNoMes;
 
-  if (config.metaReceitaMensal > 0) {
+  if (alvoMes > 0) {
     const esperado = mesPercorrido * 100;
     if (atingido >= 100) {
       alertas.push({
         id: "meta-atingida",
         severidade: "good",
-        titulo: "Meta do mês atingida",
-        detalhe: `${atingido.toFixed(0)}% da meta de faturamento já realizada.`,
+        titulo: "Alvo do mês atingido",
+        detalhe: `${atingido.toFixed(0)}% de ${moeda(alvoMes)} já faturados.`,
       });
     } else if (atingido < esperado - 15) {
       alertas.push({
         id: "meta-abaixo",
         severidade: "warning",
-        titulo: "Faturamento abaixo do ritmo da meta",
-        detalhe: `${atingido.toFixed(0)}% da meta com ${diaDoMes}/${diasNoMes} do mês corrido.`,
+        titulo: "Faturamento abaixo do ritmo do mês",
+        detalhe: `${atingido.toFixed(0)}% de ${moeda(alvoMes)} com ${diaDoMes}/${diasNoMes} do mês corrido.`,
       });
+    }
+  }
+
+  /**
+   * O mês fechado que ficou abaixo da rampa. Diferente do alerta acima, que
+   * olha o mês em curso, este é um veredito definitivo: o mês acabou e o
+   * marco não foi entregue — o que muda o esforço de todos os meses seguintes.
+   */
+  const plano = planoDaConfig(config);
+  if (plano) {
+    const mesPassado = monthKey(addMonths(firstDayOfMonth(hoje), -1));
+    const dentroDoPlano = mesPassado >= plano.inicio;
+    if (dentroDoPlano) {
+      const diagnostico = avaliarPlano(plano, faturamentoPorMes(base), mesPassado);
+      if (!diagnostico.noRitmo && diagnostico.mesesRestantes > 0) {
+        alertas.push({
+          id: "plano-fora-do-ritmo",
+          severidade: "warning",
+          titulo: "Mês fechado abaixo do plano",
+          detalhe: `${moeda(diagnostico.realizadoMes)} contra alvo de ${moeda(
+            diagnostico.alvoMes
+          )}. Para fechar no prazo, agora são ${moeda(
+            diagnostico.incrementoNecessario
+          )} a mais por mês.`,
+        });
+      }
     }
   }
 
