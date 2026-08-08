@@ -3,17 +3,17 @@
 import { useEffect, useState } from "react";
 
 /**
- * A assinatura da tela de entrada troca sozinha o sujeito da frase, sublinhando
- * a palavra que muda.
+ * A assinatura da tela de entrada troca **apenas a expressão sublinhada** — o
+ * complemento "começa na base." fica parado.
  *
- * Duas decisões que fazem a animação não atrapalhar:
+ * Para o complemento não se mexer, as expressões dividem a mesma célula de
+ * grade e são alinhadas à direita: a grade tem a largura da maior, então a
+ * palavra sempre termina no mesmo ponto e o espaço até o complemento é
+ * constante. Sem isso, cada troca empurraria o resto da frase para os lados.
  *
- * - Todas as variações ocupam a **mesma célula de grade**, então o bloco tem a
- *   largura da maior e o texto centralizado nunca "pula" a cada troca.
- * - Quem pediu menos movimento no sistema vê só a primeira frase, parada. O
- *   ciclo nem começa.
+ * Quem pede menos movimento no sistema vê só a primeira expressão, parada.
  */
-const FRASES = [
+const EXPRESSOES = [
   "toda decisão",
   "todo futuro",
   "todo crescimento",
@@ -32,7 +32,7 @@ export default function TaglineRotativa({ className = "" }: { className?: string
     if (menosMovimento.matches) return;
 
     const id = setInterval(
-      () => setIndice((atual) => (atual + 1) % FRASES.length),
+      () => setIndice((atual) => (atual + 1) % EXPRESSOES.length),
       INTERVALO
     );
     return () => clearInterval(id);
@@ -40,25 +40,25 @@ export default function TaglineRotativa({ className = "" }: { className?: string
 
   return (
     <p className={`text-center text-[15px] leading-relaxed text-ink-2 ${className}`}>
-      {/* Leitores de tela recebem uma frase estável; o carrossel é decorativo. */}
-      <span className="sr-only">{`${FRASES[0]} ${COMPLEMENTO}`}</span>
+      {/* Leitores de tela recebem uma frase estável; o rodízio é decorativo. */}
+      <span className="sr-only">{`${EXPRESSOES[0]} ${COMPLEMENTO}`}</span>
 
-      <span aria-hidden className="grid justify-items-center">
-        {FRASES.map((frase, i) => {
-          const ativa = i === indice;
-          return (
-            <span
-              key={frase}
-              className="col-start-1 row-start-1 whitespace-nowrap transition-[opacity,transform] duration-500 ease-out"
-              style={{
-                opacity: ativa ? 1 : 0,
-                transform: `translateY(${ativa ? 0 : 6}px)`,
-              }}
-            >
-              <span className="relative font-semibold text-brand">
-                {frase}
+      <span aria-hidden>
+        <span className="inline-grid justify-items-end align-baseline">
+          {EXPRESSOES.map((expressao, i) => {
+            const ativa = i === indice;
+            return (
+              <span
+                key={expressao}
+                className="relative col-start-1 row-start-1 whitespace-nowrap font-semibold text-brand transition-[opacity,transform] duration-500 ease-out"
+                style={{
+                  opacity: ativa ? 1 : 0,
+                  transform: `translateY(${ativa ? 0 : 5}px)`,
+                }}
+              >
+                {expressao}
                 {/* O sublinhado é desenhado da esquerda para a direita quando a
-                    frase entra — some junto quando ela sai. */}
+                    expressão entra, e recolhido quando ela sai. */}
                 <span
                   className="absolute inset-x-0 -bottom-0.5 h-0.5 origin-left rounded-full bg-brand/45 transition-transform duration-500 ease-out"
                   style={{
@@ -66,11 +66,11 @@ export default function TaglineRotativa({ className = "" }: { className?: string
                     transitionDelay: ativa ? "160ms" : "0ms",
                   }}
                 />
-              </span>{" "}
-              <span className="text-ink-2">{COMPLEMENTO}</span>
-            </span>
-          );
-        })}
+              </span>
+            );
+          })}
+        </span>{" "}
+        {COMPLEMENTO}
       </span>
     </p>
   );

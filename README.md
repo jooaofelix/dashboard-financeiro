@@ -154,7 +154,10 @@ recuperação por e-mail), **Google** e **convidado** (sessão anônima, com
 workspace próprio e descartável).
 
 O botão do Google só aparece quando o Firebase está configurado: oferecer um
-login que não tem como funcionar é pior do que não oferecer.
+login que não tem como funcionar é pior do que não oferecer. Quando ele não
+aparece, **um aviso ocupa o lugar dele** dizendo o que falta — um botão que
+some sem explicação parece defeito, e a causa quase sempre é a mesma: as
+chaves `NEXT_PUBLIC_FIREBASE_*` não entraram no build.
 
 ```
 usuarios/{uid}                    perfil + configurações do workspace

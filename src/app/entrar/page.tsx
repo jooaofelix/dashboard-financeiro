@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, Eye, EyeOff, HardDrive, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, HardDrive, Info, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { BaseMark, BaseWordmark } from "@/components/BaseLogo";
 import CampoParticulas from "@/components/CampoParticulas";
@@ -239,7 +239,7 @@ export default function EntrarPage() {
         </div>
 
         <div className="flex w-full flex-col gap-3">
-          {googleDisponivel && (
+          {googleDisponivel ? (
             <button
               type="button"
               onClick={() => entrarPor(entrarComGoogle)}
@@ -249,6 +249,23 @@ export default function EntrarPage() {
               <LogoGoogle />
               Entrar com Google
             </button>
+          ) : (
+            /* O botão some quando não há Firebase — mas some sem explicação
+               parece defeito. O aviso ocupa o lugar dele e diz o que falta. */
+            <p className="flex items-start gap-2 rounded-2xl border border-dashed border-line px-4 py-3 text-xs leading-relaxed text-ink-3">
+              <Info size={14} className="mt-0.5 shrink-0" aria-hidden />
+              <span className="text-left">
+                <strong className="font-semibold text-ink-2">
+                  Entrar com Google indisponível.
+                </strong>{" "}
+                Ele depende do Firebase, e as chaves{" "}
+                <code className="rounded bg-raised px-1 py-px font-mono text-[11px]">
+                  NEXT_PUBLIC_FIREBASE_*
+                </code>{" "}
+                entram no <em>build</em> — defina-as como variáveis de build
+                (não como secrets de runtime) e publique de novo.
+              </span>
+            </p>
           )}
 
           <button
@@ -276,9 +293,8 @@ export default function EntrarPage() {
           <p className="mt-8 flex max-w-[340px] items-start gap-2 text-center text-xs leading-relaxed text-ink-3">
             <HardDrive size={13} className="mt-0.5 shrink-0" aria-hidden />
             <span className="text-left">
-              Modo demonstração: sem Firebase configurado, a sessão fica só neste
-              navegador, não protege os dados de verdade e o login com Google
-              fica indisponível.
+              Modo demonstração: sem Firebase configurado, a sessão fica só
+              neste navegador e não protege os dados de verdade.
             </span>
           </p>
         )}
