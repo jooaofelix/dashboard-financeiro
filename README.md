@@ -70,6 +70,37 @@ as sugestões.
 - **Configurações** — segmento, dados da empresa, parâmetros financeiros, catálogo
   de serviços, equipe e gestão da base.
 
+## Agenda
+
+Cada lançamento pode ter **hora** (opcional) e vai para a agenda em três níveis,
+do mais universal ao mais integrado:
+
+| Como | Precisa de quê | Onde fica |
+|---|---|---|
+| **Link do Google Agenda** | nada | ícone de calendário em cada lançamento |
+| **Arquivo `.ics`** | nada | "Exportar agenda" na tela de lançamentos e "Baixar .ics" em Configurações |
+| **Envio direto pela API** | login e permissão do Google | Configurações › Google Agenda |
+
+O `.ics` segue a RFC 5545 (CRLF, escape de caracteres, dobra de linha em 75
+colunas) e importa em Google, Apple e Outlook. Lançamento sem hora vira evento de
+dia inteiro; com hora, usa a duração do serviço do catálogo — inclusive quando
+atravessa a meia-noite. Só entra na agenda o que ainda vai acontecer: despejar
+meses de histórico só polui.
+
+A conexão direta pede a permissão **apenas de criar eventos** (não lê sua
+agenda), e à parte do login — ninguém precisa liberar a agenda só para entrar no
+sistema. O token vive **só em memória** e vale cerca de uma hora: sem servidor
+não há como renová-lo em segundo plano, então a sincronização é uma ação
+explícita, e a tela diz isso em vez de fingir que é automática.
+
+```bash
+npm run test:agenda
+```
+
+Verifica a geração contra a especificação: moldura do calendário, CRLF, escape,
+dobra de linha, intervalo com e sem hora, virada de meia-noite e o formato do
+link do Google.
+
 ## O que o sistema calcula
 
 Competência e caixa são tratados separadamente — é a distinção que costuma faltar

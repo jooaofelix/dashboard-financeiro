@@ -3,9 +3,13 @@
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
+  CalendarCheck,
+  CalendarPlus,
   Check,
+  CheckCircle2,
   Cloud,
   HardDrive,
+  Loader2,
   Pencil,
   Plus,
   RefreshCw,
@@ -25,8 +29,18 @@ import {
   Th,
 } from "@/components/ui";
 import { SEGMENTOS } from "@/lib/segments";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
+import { formatCurrency, formatNumber, formatPercent, todayISO } from "@/lib/format";
 import { Profissional, Servico } from "@/lib/types";
+import { useAuth } from "@/lib/auth-context";
+import { usePeriodo } from "@/lib/periodo-context";
+import {
+  atendimentoParaEvento,
+  baixarICS,
+  eventosRelevantes,
+  sincronizarEventos,
+  TokenExpirado,
+} from "@/lib/agenda";
+import { dentroDoPeriodo } from "@/lib/periodo";
 
 export default function ConfiguracoesPage() {
   const base = useBase();
@@ -181,6 +195,8 @@ export default function ConfiguracoesPage() {
         crud={profissionaisCrud}
       />
 
+      <PainelAgenda />
+
       <Panel
         titulo="Dados"
         descricao={
@@ -275,6 +291,153 @@ export default function ConfiguracoesPage() {
 }
 
 /* -------------------------------------------------------------------------- */
+
+/**
+ * Ligação com o Google Agenda.
+ *
+ * O arquivo `.ics` funciona para todo mundo, sempre. A sincronização direta
+ * exige o consentimento do Google e vale enquanto o token durar (cerca de uma
+ * hora) — sem servidor não há como renová-lo em segundo plano, então ela é uma
+ * ação explícita, e a tela diz isso em vez de fingir que é automática.
+ */
+function PainelAgenda() {
+  const base = useBase();
+  const { segmento } = useData();
+  const { conectarAgenda, googleDisponivel } = useAuth();
+  const { periodo } = usePeriodo();
+
+  const [token, setToken] = useState<string | null>(null);
+  const [ocupadoAgenda, setOcupadoAgenda] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  const eventos = useMemo(() => {
+    const clientePorId = new Map(base.clientes.map((c) => [c.id, c]));
+    const servicoPorId = new Map(base.servicos.map((s) => [s.id, s]));
+    const profissionalPorId = new Map(base.profissionais.map((p) => [p.id, p]));
+    const daJanela = base.atendimentos.filter(
+      (a) => a.status !== "cancelado" && dentroDoPeriodo(a.data, periodo)
+    );
+    return eventosRelevantes(
+      daJanela.map((a) =>
+        atendimentoParaEvento(a, {
+          cliente: clientePorId.get(a.clienteId),
+          servico: a.servicoId ? servicoPorId.get(a.servicoId) : undefined,
+          profissional: a.profissionalId ? profissionalPorId.get(a.profissionalId) : undefined,
+          rotuloAtendimento: segmento.labels.atendimento,
+        })
+      ),
+      todayISO()
+    );
+  }, [base, periodo, segmento.labels.atendimento]);
+
+  async function conectar() {
+    setErro(null);
+    setAviso(null);
+    setOcupadoAgenda(true);
+    try {
+      setToken(await conectarAgenda());
+      setAviso("Google Agenda conectado.");
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "Não foi possível conectar.");
+    } finally {
+      setOcupadoAgenda(false);
+    }
+  }
+
+  async function sincronizar() {
+    if (!token) return;
+    setErro(null);
+    setAviso(null);
+    setOcupadoAgenda(true);
+    try {
+      const { criados, falhas } = await sincronizarEventos(eventos, token);
+      setAviso(
+        `${criados} evento(s) criado(s) na sua agenda` +
+          (falhas > 0 ? ` · ${falhas} falharam` : "") +
+          "."
+      );
+    } catch (falha) {
+      if (falha instanceof TokenExpirado) setToken(null);
+      setErro(falha instanceof Error ? falha.message : "Não foi possível sincronizar.");
+    } finally {
+      setOcupadoAgenda(false);
+    }
+  }
+
+  return (
+    <Panel
+      titulo="Google Agenda"
+      descricao={`Leve os ${segmento.labels.atendimentos.toLowerCase()} do período para a sua agenda.`}
+    >
+      <div className="flex flex-col gap-4">
+        <div className="rounded-lg bg-raised px-3 py-3 text-xs leading-relaxed text-ink-2">
+          {eventos.length > 0 ? (
+            <>
+              <strong className="text-ink">{formatNumber(eventos.length)}</strong> evento(s)
+              de hoje em diante dentro do período selecionado.
+            </>
+          ) : (
+            "Nenhum evento futuro no período selecionado — ajuste o filtro de período no topo."
+          )}
+        </div>
+
+        {erro && (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-lg bg-crit-soft px-3 py-2.5 text-sm text-crit-ink"
+          >
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden />
+            {erro}
+          </p>
+        )}
+        {aviso && (
+          <p
+            role="status"
+            className="flex items-start gap-2 rounded-lg bg-good-soft px-3 py-2.5 text-sm text-good-ink"
+          >
+            <CheckCircle2 size={15} className="mt-0.5 shrink-0" aria-hidden />
+            {aviso}
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            icon={CalendarPlus}
+            onClick={() => baixarICS(`agenda-base-${todayISO()}`, eventos)}
+            disabled={eventos.length === 0}
+          >
+            Baixar .ics
+          </Button>
+
+          {googleDisponivel &&
+            (token ? (
+              <Button
+                variante="primary"
+                icon={ocupadoAgenda ? Loader2 : CalendarCheck}
+                onClick={sincronizar}
+                disabled={ocupadoAgenda || eventos.length === 0}
+              >
+                {ocupadoAgenda ? "Enviando…" : "Enviar para o Google Agenda"}
+              </Button>
+            ) : (
+              <Button icon={CalendarCheck} onClick={conectar} disabled={ocupadoAgenda}>
+                {ocupadoAgenda ? "Conectando…" : "Conectar Google Agenda"}
+              </Button>
+            ))}
+        </div>
+
+        <p className="text-xs leading-relaxed text-ink-3">
+          O arquivo <strong>.ics</strong> importa em Google, Apple e Outlook e não
+          depende de conta nenhuma.
+          {googleDisponivel
+            ? " A conexão direta pede permissão para criar eventos (não lê sua agenda) e vale por cerca de uma hora — depois disso basta conectar de novo."
+            : " A conexão direta com o Google exige o Firebase configurado."}
+        </p>
+      </div>
+    </Panel>
+  );
+}
 
 function Chips({ itens }: { itens: string[] }) {
   return (

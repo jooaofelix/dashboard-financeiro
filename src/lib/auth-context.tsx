@@ -11,6 +11,8 @@ import {
 import {
   GoogleAuthProvider,
   User,
+  linkWithPopup,
+  reauthenticateWithPopup,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -51,6 +53,12 @@ interface AuthContextValue {
   entrarComGoogle: () => Promise<void>;
   /** O botão do Google só existe com Firebase: sem ele não há o que autenticar. */
   googleDisponivel: boolean;
+  /**
+   * Autorização da agenda, pedida à parte do login. Devolve o token de acesso,
+   * que vive só em memória: guardá-lo no `localStorage` seria entregar acesso à
+   * agenda do usuário a qualquer script injetado na página.
+   */
+  conectarAgenda: () => Promise<string>;
   entrarComoConvidado: () => Promise<void>;
   recuperarSenha: (email: string) => Promise<void>;
   sair: () => Promise<void>;
@@ -93,12 +101,19 @@ function mensagemDeErro(erro: unknown): string {
       return "Já existe uma conta com este e-mail criada por outro método. Entre com e-mail e senha.";
     case "auth/unauthorized-domain":
       return "Este domínio não está autorizado no Firebase Authentication.";
+    case "auth/credential-already-in-use":
+      return "Esta conta do Google já está vinculada a outro usuário da BASE.";
+    case "auth/provider-already-linked":
+      return "Esta conta do Google já está vinculada.";
     default:
       return "Não foi possível concluir. Tente novamente.";
   }
 }
 
 export class ErroDeAutenticacao extends Error {}
+
+/** Permissão mínima para criar eventos — não dá acesso de leitura à agenda. */
+const ESCOPO_AGENDA = "https://www.googleapis.com/auth/calendar.events";
 
 function validarLocal(email: string, senha: string) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -186,6 +201,35 @@ function useAuthFirebase(): AuthContextValue {
           return signInWithPopup(auth!, provedor);
         }),
       googleDisponivel: true,
+      conectarAgenda: async () => {
+        const atual = auth?.currentUser;
+        if (!atual) throw new ErroDeAutenticacao("Entre na sua conta primeiro.");
+
+        const provedor = new GoogleAuthProvider();
+        provedor.addScope(ESCOPO_AGENDA);
+        provedor.setCustomParameters({ prompt: "consent" });
+
+        try {
+          // Quem já entrou com o Google reautentica; quem entrou por e-mail
+          // vincula a conta. Um `signInWithPopup` aqui trocaria a sessão pela
+          // conta do Google e derrubaria quem usa e-mail e senha.
+          const jaEhGoogle = atual.providerData.some((p) => p.providerId === "google.com");
+          const resultado = jaEhGoogle
+            ? await reauthenticateWithPopup(atual, provedor)
+            : await linkWithPopup(atual, provedor);
+
+          const token = GoogleAuthProvider.credentialFromResult(resultado)?.accessToken;
+          if (!token) {
+            throw new ErroDeAutenticacao(
+              "O Google não devolveu permissão para a agenda. Tente novamente."
+            );
+          }
+          return token;
+        } catch (erro) {
+          if (erro instanceof ErroDeAutenticacao) throw erro;
+          throw new ErroDeAutenticacao(mensagemDeErro(erro));
+        }
+      },
       entrarComoConvidado: () => executar(() => signInAnonymously(auth!)),
       recuperarSenha: (email) =>
         executar(() => sendPasswordResetEmail(auth!, email.trim())),
@@ -234,6 +278,11 @@ function useAuthLocal(): AuthContextValue {
         );
       },
       googleDisponivel: false,
+      conectarAgenda: async () => {
+        throw new ErroDeAutenticacao(
+          "Conectar o Google Agenda exige o Firebase configurado. O arquivo .ics e o link do Google funcionam sem isso."
+        );
+      },
       entrarComoConvidado: async () => {
         setSessao({
           uid: "local-convidado",

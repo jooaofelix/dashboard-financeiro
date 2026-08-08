@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  CalendarPlus,
   CheckCircle2,
   Download,
   Pencil,
@@ -40,6 +41,12 @@ import {
   StatusPagamento,
 } from "@/lib/types";
 import { baixarCSV, numeroCSV } from "@/lib/csv";
+import {
+  atendimentoParaEvento,
+  baixarICS,
+  eventosRelevantes,
+  linkGoogleAgenda,
+} from "@/lib/agenda";
 
 type FiltroStatus = StatusPagamento | "todos" | "em-aberto";
 
@@ -49,6 +56,7 @@ const formularioVazio = () => ({
   profissionalId: "",
   descricao: "",
   data: todayISO(),
+  hora: "",
   vencimento: todayISO(),
   valor: "",
   desconto: "",
@@ -169,6 +177,7 @@ export default function ReceitasPage() {
       profissionalId: a.profissionalId ?? "",
       descricao: a.descricao ?? "",
       data: a.data,
+      hora: a.hora ?? "",
       vencimento: a.vencimento,
       valor: String(a.valor),
       desconto: a.desconto ? String(a.desconto) : "",
@@ -190,6 +199,7 @@ export default function ReceitasPage() {
       profissionalId: form.profissionalId || undefined,
       descricao: form.descricao.trim() || undefined,
       data: form.data,
+      hora: form.hora || undefined,
       vencimento: form.vencimento || form.data,
       valor: Number(form.valor),
       desconto: Number(form.desconto || 0),
@@ -214,6 +224,22 @@ export default function ReceitasPage() {
       pagoEm: todayISO(),
       formaPagamento: a.formaPagamento ?? "Pix",
     });
+  }
+
+  /** Monta o evento de agenda a partir do lançamento e do vocabulário atual. */
+  function eventoDe(a: Atendimento) {
+    return atendimentoParaEvento(a, {
+      cliente: clientePorId.get(a.clienteId),
+      servico: a.servicoId ? servicoPorId.get(a.servicoId) : undefined,
+      profissional: a.profissionalId ? profissionalPorId.get(a.profissionalId) : undefined,
+      rotuloAtendimento: rotulos.atendimento,
+    });
+  }
+
+  function exportarAgenda() {
+    // Só o que ainda vai acontecer: importar meses de histórico polui a agenda.
+    const eventos = eventosRelevantes(filtrados.map(eventoDe), todayISO());
+    baixarICS(`agenda-base-${todayISO()}`, eventos);
   }
 
   function exportar() {
@@ -267,7 +293,15 @@ export default function ReceitasPage() {
             onClick={exportar}
             disabled={filtrados.length === 0}
           >
-            Exportar
+            Exportar CSV
+          </Button>
+          <Button
+            icon={CalendarPlus}
+            onClick={exportarAgenda}
+            disabled={filtrados.length === 0}
+            title="Baixa um .ics com o que ainda vai acontecer, para importar no Google, Apple ou Outlook"
+          >
+            Exportar agenda
           </Button>
           <Button variante="primary" icon={Plus} onClick={abrirNovo}>
             Novo lançamento
@@ -439,6 +473,16 @@ export default function ReceitasPage() {
                               <CheckCircle2 size={16} />
                             </button>
                           )}
+                          <a
+                            href={linkGoogleAgenda(eventoDe(a))}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Adicionar ao Google Agenda"
+                            aria-label={`Adicionar ao Google Agenda o lançamento de ${clientePorId.get(a.clienteId)?.nome ?? ""}`}
+                            className="inline-flex rounded-md p-1.5 text-ink-3 hover:bg-brand-soft hover:text-brand"
+                          >
+                            <CalendarPlus size={16} />
+                          </a>
                           <button
                             onClick={() => abrirEdicao(a)}
                             title="Editar"
@@ -563,6 +607,14 @@ export default function ReceitasPage() {
                   setForm({ ...form, descricao: e.target.value })
                 }
                 placeholder="Ex: atendimento fora do catálogo"
+              />
+            </Field>
+
+            <Field label="Hora" hint="Opcional. Sem hora, o evento na agenda vira dia inteiro.">
+              <Input
+                type="time"
+                value={form.hora}
+                onChange={(e) => setForm({ ...form, hora: e.target.value })}
               />
             </Field>
 

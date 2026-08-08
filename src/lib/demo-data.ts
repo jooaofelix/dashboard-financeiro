@@ -263,12 +263,19 @@ export function gerarBaseDemo(segmentoId: string, semente = 20260808): BaseDados
           ? addDays(vencimento, Math.max(-prazo, diasAteReceber))
           : undefined;
 
+      // Horário comercial em blocos de 30 min: o que vai para a agenda precisa
+      // parecer uma agenda de verdade.
+      const blocos = Math.floor(random() * 20);
+      const horaCheia = 8 + Math.floor(blocos / 2);
+      const hora = `${String(horaCheia).padStart(2, "0")}:${blocos % 2 ? "30" : "00"}`;
+
       atendimentos.push({
         id: id("atd", contadorAtendimento++),
         clienteId: cliente.id,
         servicoId: servico.id,
         profissionalId: profissional.id,
         data,
+        hora,
         vencimento,
         valor,
         desconto,

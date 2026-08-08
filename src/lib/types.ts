@@ -62,6 +62,8 @@ export interface Atendimento {
   descricao?: string;
   /** Data da execução — usada no regime de competência. */
   data: string;
+  /** `HH:MM`. Opcional: sem hora, o evento na agenda vira "dia inteiro". */
+  hora?: string;
   /** Vencimento do pagamento — usado no fluxo de caixa e no aging. */
   vencimento: string;
   valor: number;
