@@ -373,3 +373,40 @@ export const SEGMENTO_PADRAO = "clinica";
 export function getSegmento(id: string): Segmento {
   return SEGMENTOS.find((s) => s.id === id) ?? SEGMENTOS[0];
 }
+
+/**
+ * Ticket médio do catálogo do segmento. Serve como referência antes de existir
+ * histórico — é o que permite traduzir uma meta em quantidade de atendimentos
+ * já na tela de boas-vindas.
+ */
+export function ticketMedioSegmento(s: Segmento): number {
+  if (s.servicos.length === 0) return 0;
+  return s.servicos.reduce((soma, x) => soma + x.valorPadrao, 0) / s.servicos.length;
+}
+
+/** Quanto de cada real faturado vai embora em custo direto do serviço, em %. */
+export function custoDiretoMedioPercent(s: Segmento): number {
+  const receita = s.servicos.reduce((soma, x) => soma + x.valorPadrao, 0);
+  if (receita <= 0) return 0;
+  const custo = s.servicos.reduce((soma, x) => soma + x.custoDireto, 0);
+  return (custo / receita) * 100;
+}
+
+/**
+ * Faturamento mensal que apenas cobre a estrutura: o custo fixo dividido pela
+ * margem que sobra de cada real depois de impostos e custo direto.
+ *
+ * É uma estimativa de partida — o ponto de equilíbrio de verdade sai dos
+ * lançamentos reais, em `finance.ts`. Mas é ela que faz a pergunta certa
+ * aparecer antes do primeiro lançamento: "quanto eu preciso faturar só para
+ * não sair no prejuízo?".
+ */
+export function pontoEquilibrioEstimado(
+  custoFixoMensal: number,
+  aliquotaImpostos: number,
+  custoDiretoPercent: number
+): number {
+  const margem = 1 - aliquotaImpostos / 100 - custoDiretoPercent / 100;
+  if (margem <= 0) return 0;
+  return custoFixoMensal / margem;
+}

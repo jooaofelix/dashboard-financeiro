@@ -108,6 +108,15 @@ export interface Configuracao {
   reservaMinimaCaixa: number;
   /** Janela do alerta "vence em breve". */
   diasAlertaVencimento: number;
+  /**
+   * Plano de crescimento: de onde o negócio partiu e em quanto tempo pretende
+   * chegar à `metaReceitaMensal`. Opcional — workspaces criados antes do plano
+   * existir continuam válidos, e quem não quiser traçar meta segue sem ela.
+   */
+  faturamentoBase?: number;
+  metaHorizonteMeses?: number;
+  /** Mês de partida do plano (`AAAA-MM`). */
+  planoInicio?: string;
   /** Marca que o workspace já passou pela configuração inicial. */
   onboardingConcluido?: boolean;
 }

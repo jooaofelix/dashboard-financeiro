@@ -35,7 +35,9 @@ import {
 import { useBase, useData } from "@/lib/data-context";
 import { usePeriodo } from "@/lib/periodo-context";
 import KpiCard from "@/components/KpiCard";
+import PainelPlano from "@/components/PainelPlano";
 import { Panel } from "@/components/ui";
+import { planoDaConfig } from "@/lib/plano";
 import {
   ChartCard,
   ChartTooltip,
@@ -120,6 +122,8 @@ export default function DashboardPage() {
   const mesesNoPeriodo = Math.max(1, serie.length);
   const metaPeriodo = config.metaReceitaMensal * mesesNoPeriodo;
   const progressoMeta = metaPeriodo > 0 ? (resumo.faturamento / metaPeriodo) * 100 : 0;
+
+  const plano = useMemo(() => planoDaConfig(config), [config]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -229,6 +233,15 @@ export default function DashboardPage() {
         pontoEquilibrio={resumo.pontoEquilibrio}
         receitaRecorrente={resumo.receitaRecorrenteMensal}
       />
+
+      {plano && (
+        <PainelPlano
+          plano={plano}
+          base={base}
+          ticketMedio={resumo.ticketMedio}
+          rotuloAtendimentos={segmento.labels.atendimentos}
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <ChartCard

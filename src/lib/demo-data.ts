@@ -4,6 +4,7 @@ import {
   diffDays,
   firstDayOfMonth,
   lastDayOfMonth,
+  monthKey,
   todayISO,
 } from "./format";
 import { getSegmento, Segmento } from "./segments";
@@ -136,6 +137,12 @@ export function configuracaoPadrao(segmentoId: string): Configuracao {
     saldoInicialCaixa: Math.round(segmento.tetoDespesaMensal * 0.9),
     reservaMinimaCaixa: Math.round(segmento.tetoDespesaMensal * 1.5),
     diasAlertaVencimento: 7,
+    // Plano de doze meses já em curso há seis: assim a demonstração mostra a
+    // rampa com meses fechados de um lado e o prazo aberto do outro, que é
+    // como um plano de verdade aparece.
+    faturamentoBase: Math.round(segmento.metaReceitaMensal * 0.72),
+    metaHorizonteMeses: 12,
+    planoInicio: monthKey(addMonths(todayISO(), -6)),
   };
 }
 

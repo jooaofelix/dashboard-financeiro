@@ -49,8 +49,10 @@ as sugestões.
 
 - **Entrar** — e-mail e senha, **Google**, recuperação de senha e acesso de
   convidado. Todas as telas internas exigem sessão.
-- **Boas-vindas** — configuração inicial do workspace logo após criar a conta:
-  tipo de negócio, nome e se quer começar com dados de exemplo ou vazio.
+- **Boas-vindas** — configuração inicial do workspace em quatro etapas: tipo de
+  negócio e nome, a operação de hoje (faturamento, custo fixo, caixa, impostos),
+  a meta com prazo — e a revisão, onde se escolhe começar com dados de exemplo
+  ou vazio. Ver ["Do orçamento à meta"](#do-orçamento-à-meta).
 - **Dashboard** — alertas acionáveis, 8 indicadores com variação contra o período
   anterior, medidor de meta com ponto de equilíbrio, receita × despesa × resultado,
   composição das despesas, aging de recebíveis e concentração de clientes.
@@ -69,6 +71,59 @@ as sugestões.
   recebimentos por forma de pagamento. Todos exportáveis em CSV.
 - **Configurações** — segmento, dados da empresa, parâmetros financeiros, catálogo
   de serviços, equipe e gestão da base.
+
+## Do orçamento à meta
+
+A conta nova não começa com um formulário: começa com quatro perguntas que um
+dono de negócio já se faz — e cada resposta devolve um número na hora.
+
+| Etapa | O que pergunta | O que devolve na tela |
+|---|---|---|
+| Seu negócio | segmento e nome | vocabulário, catálogo e categorias do segmento |
+| Sua operação hoje | faturamento médio, custo fixo, caixa, alíquota | **ponto de equilíbrio** estimado e quanto falta para alcançá-lo |
+| Onde quer chegar | meta mensal e prazo (6, 12 ou 24 meses) | quanto somar por mês, quantos atendimentos isso é, e os marcos mês a mês |
+| Tudo pronto | confirmação | resumo dos parâmetros e a escolha de dados de exemplo |
+
+Perguntar o orçamento sem devolver nada seria burocracia. Devolvendo o ponto de
+equilíbrio antes do primeiro lançamento, o cadastro já é a primeira análise do
+negócio — e se a meta informada ficar **abaixo** do ponto de equilíbrio, a tela
+diz isso na hora, porque alcançá-la ainda deixaria a empresa no prejuízo.
+
+### A rampa
+
+Uma meta solta não orienta ninguém: ela não diz quanto isso significa *neste
+mês*. O plano quebra a diferença entre o ponto de partida e a meta em marcos
+mensais — uma rampa **linear**, um incremento fixo por mês.
+
+A rampa é linear de propósito. Uma curva composta descreveria melhor um negócio
+maduro, mas é indefinida quando o ponto de partida é zero (quem acabou de abrir
+a conta), e *"some R$ 1.700 por mês"* é uma instrução que se executa; *"cresça
+3,2% ao mês"* não. O percentual composto equivalente aparece junto, para
+comparação.
+
+No painel, o cartão **Plano de crescimento** responde à pergunta que os KPIs não
+respondem — *"estou indo chegar?"*:
+
+- **alvo do mês corrente**, e quanto falta em dinheiro e em atendimentos;
+- **último mês fechado** contra o alvo dele, com folga de 5% antes de acusar
+  atraso — um alarme que dispara sozinho todo dia 1º ensina a ser ignorado;
+- **projeção para o fim do prazo** no ritmo médio observado, ou quanto passa a
+  ser preciso somar por mês para ainda fechar no prazo.
+
+O mês em curso aparece com a barra vazada (é parcial, não fechado) e até seis
+meses anteriores à partida entram esmaecidos como contexto, sem alvo — a rampa
+não valia para eles. O plano é editável em **Configurações › Plano de
+crescimento**, com um botão para recomeçar a partir do mês atual: seis meses
+depois, "de onde eu saí" já não é o mesmo lugar.
+
+```bash
+npm run test:plano
+```
+
+Verifica 28 cenários da matemática: rampa e marcos, virada de ano, alvo antes da
+partida e depois do prazo, meta abaixo do ponto de partida (redução planejada),
+tradução em atendimentos, diagnóstico no ritmo e fora dele, projeção do ritmo
+observado e o recálculo do incremento necessário.
 
 ## Agenda
 

@@ -29,8 +29,22 @@ import {
   Th,
 } from "@/components/ui";
 import { SEGMENTOS } from "@/lib/segments";
-import { formatCurrency, formatNumber, formatPercent, todayISO } from "@/lib/format";
-import { Profissional, Servico } from "@/lib/types";
+import {
+  formatCurrency,
+  formatMonthKey,
+  formatNumber,
+  formatPercent,
+  monthKey,
+  todayISO,
+} from "@/lib/format";
+import {
+  crescimentoMensalPercent,
+  incrementoMensal,
+  PlanoCrescimento,
+  planoValido,
+  trajetoria,
+} from "@/lib/plano";
+import { Configuracao, Profissional, Servico } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { usePeriodo } from "@/lib/periodo-context";
 import {
@@ -179,6 +193,8 @@ export default function ConfiguracoesPage() {
           </div>
         </Panel>
       </div>
+
+      <PlanoDeCrescimento config={config} salvarConfig={salvarConfig} />
 
       <CatalogoServicos
         servicos={base.servicos}
@@ -852,6 +868,119 @@ function Equipe({
           </div>
         </form>
       </Modal>
+    </Panel>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * O plano traçado nas boas-vindas, editável depois.
+ *
+ * Mexer no ponto de partida ou no prazo redesenha a rampa inteira, então a
+ * prévia mostra na hora o que cada alteração custa por mês — e o botão de
+ * recomeçar existe porque, seis meses depois, "de onde eu saí" já não é o mesmo
+ * lugar: replanejar a partir de hoje é mais honesto que arrastar uma base velha.
+ */
+function PlanoDeCrescimento({
+  config,
+  salvarConfig,
+}: {
+  config: Configuracao;
+  salvarConfig: (patch: Partial<Configuracao>) => void;
+}) {
+  const mesAtual = monthKey(todayISO());
+  const inicio = config.planoInicio ?? mesAtual;
+  const horizonte = config.metaHorizonteMeses ?? 0;
+
+  const plano: PlanoCrescimento = {
+    faturamentoBase: config.faturamentoBase ?? 0,
+    metaReceitaMensal: config.metaReceitaMensal,
+    horizonteMeses: horizonte,
+    inicio,
+  };
+  const ativo = planoValido(plano);
+  const passo = ativo ? incrementoMensal(plano) : 0;
+  const percent = ativo ? crescimentoMensalPercent(plano) : null;
+  const marcos = ativo ? trajetoria(plano) : [];
+  const fim = marcos[marcos.length - 1];
+
+  return (
+    <Panel
+      titulo="Plano de crescimento"
+      descricao="A rampa que leva do faturamento de partida até a meta mensal, marco a marco."
+      acoes={
+        ativo ? (
+          <Button
+            onClick={() =>
+              salvarConfig({ planoInicio: mesAtual, faturamentoBase: config.faturamentoBase ?? 0 })
+            }
+          >
+            <RefreshCw size={15} aria-hidden />
+            Recomeçar deste mês
+          </Button>
+        ) : undefined
+      }
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Field
+          label="Faturamento de partida"
+          hint="O patamar de onde a rampa começa a contar."
+        >
+          <Input
+            type="number"
+            min="0"
+            step="100"
+            value={config.faturamentoBase ?? 0}
+            onChange={(e) => salvarConfig({ faturamentoBase: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Meta de faturamento mensal" hint="A mesma meta dos parâmetros financeiros.">
+          <Input
+            type="number"
+            min="0"
+            step="100"
+            value={config.metaReceitaMensal}
+            onChange={(e) => salvarConfig({ metaReceitaMensal: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Prazo (meses)" hint="Zero desliga o plano e mantém só a meta mensal.">
+          <Input
+            type="number"
+            min="0"
+            max="60"
+            value={horizonte}
+            onChange={(e) =>
+              salvarConfig({
+                metaHorizonteMeses: Number(e.target.value),
+                // Um plano sem mês de partida não tem rampa; ao ligar o prazo,
+                // a partida é este mês.
+                planoInicio: config.planoInicio ?? mesAtual,
+              })
+            }
+          />
+        </Field>
+      </div>
+
+      {ativo ? (
+        <p className="mt-4 rounded-xl border border-line bg-raised px-4 py-3 text-sm leading-relaxed text-ink-2">
+          Partindo de <strong className="font-semibold text-ink">{formatCurrency(plano.faturamentoBase)}</strong> em{" "}
+          {formatMonthKey(inicio)}, são{" "}
+          <strong className="font-semibold text-ink">
+            {passo >= 0 ? "+" : "−"}
+            {formatCurrency(Math.abs(passo))}
+          </strong>{" "}
+          por mês
+          {percent !== null && ` (${formatPercent(percent, 1)} ao mês)`} até{" "}
+          <strong className="font-semibold text-ink">{formatCurrency(plano.metaReceitaMensal)}</strong> em{" "}
+          {formatMonthKey(fim.chave)}.
+        </p>
+      ) : (
+        <p className="mt-4 rounded-xl border border-line bg-raised px-4 py-3 text-sm leading-relaxed text-ink-2">
+          Sem prazo definido, a meta mensal continua valendo no medidor do painel —
+          mas não há trajetória para acompanhar. Informe um prazo para criar a rampa.
+        </p>
+      )}
     </Panel>
   );
 }

@@ -83,6 +83,8 @@ export interface DataContextValue extends BaseDados {
     segmentoId: string;
     empresa: string;
     comExemplo: boolean;
+    /** Parâmetros financeiros e plano de crescimento definidos nas boas-vindas. */
+    parametros?: Partial<Configuracao>;
   }) => Promise<void>;
   usandoFirebase: boolean;
   pronto: boolean;
@@ -340,17 +342,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       segmentoId,
       empresa,
       comExemplo,
+      parametros,
     }: {
       segmentoId: string;
       empresa: string;
       comExemplo: boolean;
+      parametros?: Partial<Configuracao>;
     }) => {
       // A base de exemplo entra antes: `recarregarDemo` reescreve a
-      // configuração com os padrões do segmento, então o nome da empresa e a
-      // marca de concluído precisam vir depois para não serem sobrescritos.
+      // configuração com os padrões do segmento, então o nome da empresa, os
+      // parâmetros escolhidos e a marca de concluído precisam vir depois para
+      // não serem sobrescritos.
       if (comExemplo) await dados.recarregarDemo(segmentoId);
       dados.salvarConfig({
         ...(comExemplo ? {} : configuracaoPadrao(segmentoId)),
+        ...parametros,
         segmentoId,
         empresa: empresa.trim(),
         onboardingConcluido: true,

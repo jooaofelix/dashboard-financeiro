@@ -10,7 +10,8 @@
     "test:rules": "npx --yes firebase-tools emulators:exec --only firestore --project base-regras-teste \"node tests/firestore-rules.test.mjs\"",
     "preview": "npm run build && npx --yes wrangler dev",
     "deploy": "npm run build && npx --yes wrangler deploy",
-    "test:agenda": "node tests/agenda.test.mjs"
+    "test:agenda": "node tests/agenda.test.mjs",
+    "test:plano": "node tests/plano.test.mjs"
   },
   "dependencies": {
     "date-fns": "^4.4.0",

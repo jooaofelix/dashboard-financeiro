@@ -427,6 +427,28 @@ const FAIXAS_AGING = [
   { faixa: "60+ dias", limite: Infinity },
 ];
 
+/**
+ * Faturamento de competência de **todos** os meses com movimento, sem recorte
+ * de período.
+ *
+ * O plano de crescimento não pode depender do filtro de período da tela: o alvo
+ * do mês corrente é o mesmo esteja o usuário olhando 30 dias ou 12 meses.
+ */
+export function faturamentoPorMes(base: BaseDados): Map<string, number> {
+  const meses = new Map<string, number>();
+  const somar = (chave: string, valor: number) =>
+    meses.set(chave, (meses.get(chave) ?? 0) + valor);
+
+  for (const a of base.atendimentos) {
+    if (a.status === "cancelado") continue;
+    somar(monthKey(a.data), valorLiquido(a));
+  }
+  for (const t of base.transacoes) {
+    if (t.tipo === "receita") somar(monthKey(t.data), t.valor);
+  }
+  return meses;
+}
+
 export function agingRecebiveis(base: BaseDados, hoje = todayISO()): FaixaAging[] {
   const buckets = FAIXAS_AGING.map((f, nivel) => ({
     faixa: f.faixa,

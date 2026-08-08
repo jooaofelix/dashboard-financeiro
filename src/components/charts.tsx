@@ -91,11 +91,13 @@ export function ChartTooltip({
 /** Legenda sempre presente a partir de duas séries — identidade nunca é só cor. */
 export function Legenda({
   itens,
+  className = "",
 }: {
   itens: { cor: string; label: string; tracejado?: boolean }[];
+  className?: string;
 }) {
   return (
-    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+    <ul className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 ${className}`}>
       {itens.map((item) => (
         <li key={item.label} className="flex items-center gap-1.5 text-xs text-ink-2">
           <span
