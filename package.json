@@ -7,9 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:rules": "firebase emulators:exec --only firestore --project base-regras-teste \"node tests/firestore-rules.test.mjs\"",
-    "preview": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "test:rules": "npx --yes firebase-tools emulators:exec --only firestore --project base-regras-teste \"node tests/firestore-rules.test.mjs\"",
+    "preview": "npm run build && npx --yes wrangler dev",
+    "deploy": "npm run build && npx --yes wrangler deploy"
   },
   "dependencies": {
     "date-fns": "^4.4.0",
@@ -28,7 +28,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
-    "firebase-tools": "^14.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
