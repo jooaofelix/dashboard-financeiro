@@ -95,6 +95,12 @@
 
   --grid: #e1e0d9;
   --axis: #c3c2b7;
+
+  /* Superfície das telas de entrada */
+  --entrada-fundo: #fafafe;
+  --entrada-veu: rgb(74 58 167 / 0.09);
+  --entrada-borda: #e2dff5;
+  --entrada-placeholder: #a5a1c4;
 }
 
 :root[data-theme="dark"] {
@@ -140,12 +146,104 @@
 
   --grid: #2c2c2a;
   --axis: #383835;
+
+  --entrada-fundo: #0b0b10;
+  --entrada-veu: rgb(144 133 233 / 0.13);
+  --entrada-borda: #2f2c45;
+  --entrada-placeholder: #6f6c8a;
 }
 
 body {
   font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
   background-color: var(--page);
   color: var(--ink);
+}
+
+/*
+ * Telas de entrada — a superfície da marca.
+ *
+ * O nome BASE pede uma leitura de fundação: o fundo é um plano contínuo, com um
+ * leve véu da cor da marca subindo de baixo, e a "poeira" de partículas dando
+ * profundidade sem competir com o conteúdo.
+ */
+.bg-entrada {
+  background-color: var(--entrada-fundo);
+  background-image:
+    radial-gradient(90rem 45rem at 50% 118%, var(--entrada-veu), transparent 70%),
+    radial-gradient(50rem 30rem at 12% -8%, var(--entrada-veu), transparent 65%);
+}
+
+/* Campos e botões altos e generosamente arredondados: o gesto de entrada é
+   grande, não é o mesmo controle compacto das telas internas. */
+.campo-entrada {
+  width: 100%;
+  height: 3.75rem;
+  border-radius: 1rem;
+  border: 1.5px solid var(--entrada-borda);
+  background-color: var(--surface);
+  padding-inline: 1.25rem;
+  font-size: 0.9375rem;
+  color: var(--ink);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.campo-entrada::placeholder {
+  color: var(--entrada-placeholder);
+}
+
+.campo-entrada:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--brand) 14%, transparent);
+}
+
+.botao-entrada,
+.botao-entrada-secundario {
+  display: inline-flex;
+  width: 100%;
+  height: 3.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  transition:
+    filter 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.botao-entrada {
+  background-color: var(--brand);
+  color: var(--brand-ink);
+}
+
+.botao-entrada:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.botao-entrada-secundario {
+  border: 1.5px solid var(--entrada-borda);
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+.botao-entrada-secundario:hover:not(:disabled) {
+  background-color: var(--raised);
+}
+
+.botao-entrada:disabled,
+.botao-entrada-secundario:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.botao-entrada:focus-visible,
+.botao-entrada-secundario:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 /* Colunas de números só alinham com dígitos de largura fixa. */

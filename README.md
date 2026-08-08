@@ -1,10 +1,19 @@
-# Dashboard Financeiro
+# BASE
 
-Painel de gestão financeira para **empresas de serviços**. O mesmo sistema atende
-uma clínica, um escritório de advocacia, uma consultoria, um salão, uma escola ou
-um profissional autônomo: o **segmento** escolhido nas configurações troca o
-vocabulário da interface e os presets de catálogo, categorias e centros de custo —
-a lógica financeira é a mesma para todos.
+> *toda decisão começa na base.*
+
+**BASE** é um painel de gestão financeira para **empresas de serviços**. O mesmo
+sistema atende uma clínica, um escritório de advocacia, uma consultoria, um salão,
+uma escola ou um profissional autônomo: o **segmento** escolhido nas configurações
+troca o vocabulário da interface e os presets de catálogo, categorias e centros de
+custo — a lógica financeira é a mesma para todos.
+
+## A marca
+
+O nome vem da **linha de base**: o zero de onde tudo cresce num gráfico e a
+fundação sobre a qual uma operação se sustenta. A marca é exatamente isso — três
+colunas subindo de uma régua sólida — e o produto inteiro é construído em cima
+dessa ideia: primeiro os números confiáveis, depois a decisão.
 
 ## Segmentos disponíveis
 
@@ -24,6 +33,8 @@ as sugestões.
 
 ## Telas
 
+- **Entrar** — autenticação por e-mail e senha, recuperação de senha e acesso de
+  convidado. Todas as telas internas exigem sessão.
 - **Dashboard** — alertas acionáveis, 8 indicadores com variação contra o período
   anterior, medidor de meta com ponto de equilíbrio, receita × despesa × resultado,
   composição das despesas, aging de recebíveis e concentração de clientes.
@@ -83,6 +94,18 @@ operação fictícia** para o segmento escolhido, de forma determinística — o
 gráficos não mudam a cada recarregamento. Em **Configurações › Dados** você
 recarrega o exemplo (útil ao trocar de segmento) ou começa do zero.
 
+## Acesso e contas
+
+O login usa **Firebase Authentication** (e-mail/senha, com recuperação por
+e-mail) e oferece entrada como **convidado** (sessão anônima). Sem Firebase
+configurado, a tela funciona em **modo demonstração**: a sessão fica no navegador
+e a própria tela avisa que ali não há proteção real — um cadeado que não tranca é
+pior do que nenhum.
+
+O workspace é **único e compartilhado**: BASE é o painel de *uma* empresa, então
+todo mundo que entra vê os mesmos livros. O login controla quem acessa o
+workspace, não separa dados por usuário.
+
 ## Persistência
 
 Sem configuração, tudo é salvo no `localStorage` do navegador — dá para avaliar o
@@ -93,9 +116,8 @@ dados vão para o Firestore e sincronizam entre dispositivos.
 
 1. Crie um projeto em [console.firebase.google.com](https://console.firebase.google.com).
 2. Ative o **Firestore Database** (modo produção).
-3. Em **Build › Authentication › Sign-in method**, ative o provedor **Anônimo**.
-   Não existe tela de login: o app se autentica sozinho em segundo plano apenas
-   para liberar o acesso ao banco.
+3. Em **Build › Authentication › Sign-in method**, ative **E-mail/senha** (para o
+   login normal) e **Anônimo** (para o botão "Entrar como convidado").
 4. Em **Configurações do projeto › Geral › Seus apps**, crie um app Web e copie as
    chaves do `firebaseConfig`.
 5. Copie `.env.local.example` para `.env.local` e preencha com essas chaves:
@@ -117,9 +139,14 @@ Se as variáveis não forem definidas, o app continua no modo local sem erros.
 
 ```
 src/
-  app/                  uma rota por tela (App Router, componentes de cliente)
-  components/           primitivos de UI, cartões de indicador e chrome dos gráficos
+  app/
+    entrar/             tela de acesso (superfície da marca, fora do chrome do app)
+    …                   uma rota por tela (App Router, componentes de cliente)
+  components/
+    BaseLogo.tsx        marca: selo, símbolo e assinatura
+    …                   primitivos de UI, indicadores e chrome dos gráficos
   lib/
+    auth-context.tsx    sessão: Firebase Auth ou perfil local
     types.ts            modelo de domínio (genérico entre segmentos)
     segments.ts         presets de negócio: rótulos, catálogos, categorias
     finance.ts          motor financeiro: resumo, DRE, aging, projeção, comissões

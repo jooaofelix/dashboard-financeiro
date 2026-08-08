@@ -8,7 +8,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import {
   collection,
@@ -19,7 +18,7 @@ import {
 import { useLocalStorage } from "./use-local-storage";
 import { useFirestoreCollection } from "./use-firestore-collection";
 import { useFirestoreDoc } from "./use-firestore-doc";
-import { useAnonymousAuth } from "./use-anonymous-auth";
+import { useAuth } from "./auth-context";
 import { configuracaoPadrao, gerarBaseDemo } from "./demo-data";
 import { getSegmento, Segmento, SEGMENTO_PADRAO } from "./segments";
 import {
@@ -32,6 +31,7 @@ import {
   Transacao,
 } from "./types";
 import { db, isFirebaseConfigured } from "./firebase";
+import { useMontado } from "./use-montado";
 
 const COLECOES = ["clientes", "servicos", "profissionais", "atendimentos", "transacoes"] as const;
 type NomeColecao = (typeof COLECOES)[number];
@@ -70,11 +70,6 @@ export interface DataContextValue extends BaseDados {
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
-
-/** O status de montagem nunca muda depois da hidratação — nada a assinar. */
-function assinarNada() {
-  return () => {};
-}
 
 function gerarId() {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -281,7 +276,10 @@ function useDadosFirestore(authReady: boolean, setOcupado: (v: boolean) => void)
 /* -------------------------------------------------------------------------- */
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const { ready: authReady } = useAnonymousAuth();
+  // Só conversa com o Firestore depois que existe sessão — antes disso as
+  // regras negariam a leitura de qualquer jeito.
+  const { autenticado } = useAuth();
+  const authReady = autenticado;
   const [ocupado, setOcupado] = useState(false);
 
   const locais = useDadosLocais();
@@ -290,11 +288,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // Os dados só existem no navegador; renderizar antes de montar causaria
   // divergência de hidratação (e formatação de moeda inconsistente).
-  const montado = useSyncExternalStore(
-    assinarNada,
-    () => true,
-    () => false
-  );
+  const montado = useMontado();
 
   const value = useMemo<DataContextValue>(
     () => ({

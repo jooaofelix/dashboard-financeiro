@@ -1,0 +1,243 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, HardDrive, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { BaseMark, BaseWordmark } from "@/components/BaseLogo";
+import CampoParticulas from "@/components/CampoParticulas";
+import ThemeToggle from "@/components/ThemeToggle";
+
+type Modo = "entrar" | "criar" | "recuperar";
+
+const TITULOS: Record<Modo, { acao: string; alternativa: string; link: string }> = {
+  entrar: { acao: "Entrar", alternativa: "Ainda não tem conta?", link: "Criar conta" },
+  criar: { acao: "Criar conta", alternativa: "Já tem conta?", link: "Entrar" },
+  recuperar: { acao: "Enviar link de recuperação", alternativa: "Lembrou a senha?", link: "Entrar" },
+};
+
+export default function EntrarPage() {
+  const router = useRouter();
+  const { entrar, criarConta, entrarComoConvidado, recuperarSenha, modoLocal } = useAuth();
+
+  const [modo, setModo] = useState<Modo>("entrar");
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [verSenha, setVerSenha] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  function trocarModo(proximo: Modo) {
+    setModo(proximo);
+    setErro(null);
+    setAviso(null);
+  }
+
+  /**
+   * Validação no formulário, não no navegador: o balão nativo vem no idioma do
+   * browser e com outra aparência. Com `noValidate` toda mensagem sai daqui, em
+   * português e no mesmo estilo do resto da tela.
+   */
+  function validar(): string | null {
+    if (modo === "criar" && !nome.trim()) return "Informe seu nome.";
+    if (!email.trim()) return "Informe seu e-mail.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "E-mail inválido.";
+    if (modo !== "recuperar") {
+      if (!senha) return "Informe sua senha.";
+      if (senha.length < 6) return "A senha precisa de pelo menos 6 caracteres.";
+    }
+    return null;
+  }
+
+  async function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    setAviso(null);
+
+    const invalido = validar();
+    if (invalido) {
+      setErro(invalido);
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      if (modo === "entrar") {
+        await entrar(email, senha);
+        router.replace("/");
+      } else if (modo === "criar") {
+        await criarConta(nome, email, senha);
+        router.replace("/");
+      } else {
+        await recuperarSenha(email);
+        setAviso("Se existir uma conta com este e-mail, o link de recuperação foi enviado.");
+      }
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "Não foi possível concluir.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function comoConvidado() {
+    setErro(null);
+    setEnviando(true);
+    try {
+      await entrarComoConvidado();
+      router.replace("/");
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : "Não foi possível entrar.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const textos = TITULOS[modo];
+
+  return (
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-entrada px-5 py-12">
+      <CampoParticulas />
+
+      <div className="absolute right-5 top-5 z-10">
+        <ThemeToggle />
+      </div>
+
+      <div className="relative z-10 flex w-full max-w-[440px] flex-col items-center">
+        {/* Selo da marca flutuando sobre o fundo. */}
+        <div className="flex h-[104px] w-[104px] items-center justify-center rounded-[28px] bg-surface text-brand shadow-[0_18px_40px_-12px_rgb(74_58_167/0.35)]">
+          <BaseMark size={54} />
+        </div>
+
+        <BaseWordmark tamanho="lg" className="mt-7 text-[3.25rem] text-brand" />
+
+        <p className="mt-3 text-center text-[15px] leading-relaxed text-ink-2">
+          <span className="border-b-2 border-brand/45 pb-0.5 font-semibold text-brand">
+            toda decisão
+          </span>{" "}
+          começa na base.
+        </p>
+
+        <form onSubmit={enviar} noValidate className="mt-9 flex w-full flex-col gap-3.5">
+          {modo === "criar" && (
+            <input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Seu nome"
+              autoComplete="name"
+              aria-label="Seu nome"
+              className="campo-entrada"
+            />
+          )}
+
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Seu e-mail"
+            autoComplete="email"
+            aria-label="Seu e-mail"
+            className="campo-entrada"
+          />
+
+          {modo !== "recuperar" && (
+            <div className="relative">
+              <input
+                type={verSenha ? "text" : "password"}
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Sua senha"
+                autoComplete={modo === "criar" ? "new-password" : "current-password"}
+                aria-label="Sua senha"
+                className="campo-entrada pr-14"
+              />
+              <button
+                type="button"
+                onClick={() => setVerSenha((v) => !v)}
+                aria-label={verSenha ? "Ocultar senha" : "Mostrar senha"}
+                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-lg p-2 text-ink-3 transition-colors hover:text-ink-2"
+              >
+                {verSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          )}
+
+          {modo === "entrar" && (
+            <button
+              type="button"
+              onClick={() => trocarModo("recuperar")}
+              className="-mt-0.5 self-end text-sm font-semibold text-brand hover:underline"
+            >
+              Esqueci minha senha
+            </button>
+          )}
+
+          {erro && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 rounded-2xl bg-crit-soft px-4 py-3 text-sm text-crit-ink"
+            >
+              <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden />
+              {erro}
+            </p>
+          )}
+
+          {aviso && (
+            <p
+              role="status"
+              className="flex items-start gap-2 rounded-2xl bg-good-soft px-4 py-3 text-sm text-good-ink"
+            >
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0" aria-hidden />
+              {aviso}
+            </p>
+          )}
+
+          <button type="submit" disabled={enviando} className="botao-entrada mt-1">
+            {enviando ? (
+              <Loader2 size={18} className="animate-spin" aria-hidden />
+            ) : (
+              textos.acao
+            )}
+          </button>
+        </form>
+
+        <div className="my-6 flex w-full items-center gap-4">
+          <span className="h-px flex-1 bg-line" />
+          <span className="text-xs text-ink-3">ou</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <button
+          type="button"
+          onClick={comoConvidado}
+          disabled={enviando}
+          className="botao-entrada-secundario"
+        >
+          Entrar como convidado
+        </button>
+
+        <p className="mt-6 text-center text-sm text-ink-2">
+          {textos.alternativa}{" "}
+          <button
+            type="button"
+            onClick={() => trocarModo(modo === "entrar" ? "criar" : "entrar")}
+            className="font-bold text-brand hover:underline"
+          >
+            {textos.link}
+          </button>
+        </p>
+
+        {modoLocal && (
+          <p className="mt-8 flex max-w-[340px] items-start gap-2 text-center text-xs leading-relaxed text-ink-3">
+            <HardDrive size={13} className="mt-0.5 shrink-0" aria-hidden />
+            <span className="text-left">
+              Modo demonstração: sem Firebase configurado, a sessão fica só neste
+              navegador e não protege os dados de verdade.
+            </span>
+          </p>
+        )}
+      </div>
+    </main>
+  );
+}

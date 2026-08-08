@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth-context";
 import { DataProvider } from "@/lib/data-context";
 import { PeriodoProvider } from "@/lib/periodo-context";
 import AppShell from "@/components/AppShell";
@@ -17,9 +18,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gestão Financeira | Dashboard",
+  title: "BASE — Gestão financeira",
   description:
-    "Dashboard financeiro para empresas de serviços: faturamento, contas, fluxo de caixa projetado, DRE e relatórios gerenciais.",
+    "BASE é o painel financeiro de empresas de serviços: faturamento, contas, fluxo de caixa projetado, DRE e relatórios gerenciais.",
+  applicationName: "BASE",
 };
 
 export default function RootLayout({
@@ -38,11 +40,13 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
       </head>
       <body className="min-h-full">
-        <DataProvider>
-          <PeriodoProvider>
-            <AppShell>{children}</AppShell>
-          </PeriodoProvider>
-        </DataProvider>
+        <AuthProvider>
+          <DataProvider>
+            <PeriodoProvider>
+              <AppShell>{children}</AppShell>
+            </PeriodoProvider>
+          </DataProvider>
+        </AuthProvider>
       </body>
     </html>
   );

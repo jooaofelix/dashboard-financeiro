@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
   Cloud,
   CreditCard,
   FileBarChart,
   HardDrive,
   LayoutDashboard,
+  LogOut,
   LucideIcon,
   Menu,
   ReceiptText,
@@ -18,8 +19,10 @@ import {
   X,
 } from "lucide-react";
 import { useData } from "@/lib/data-context";
+import { useAuth } from "@/lib/auth-context";
 import PeriodPicker from "./PeriodPicker";
 import ThemeToggle from "./ThemeToggle";
+import { BaseBadge, BaseWordmark } from "./BaseLogo";
 import { iniciais } from "@/lib/format";
 
 interface ItemNav {
@@ -61,20 +64,83 @@ function useNavegacao(): { grupo: string; itens: ItemNav[] }[] {
   ];
 }
 
+/**
+ * A marca do produto vem primeiro, o nome da empresa do cliente logo abaixo —
+ * o usuário precisa saber em qual workspace está, não só em qual sistema.
+ */
 function Marca({ compacta = false }: { compacta?: boolean }) {
-  const { config, segmento } = useData();
+  const { config } = useData();
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand text-xs font-bold text-brand-ink">
-        {iniciais(config.empresa || "Dashboard Financeiro")}
-      </div>
-      {/* Em telas estreitas o nome viraria "Clí…" e não informa nada: só a sigla fica. */}
+      <BaseBadge size={36} />
+      {/* Em telas estreitas o nome viraria "Clí…" e não informa nada: só o selo fica. */}
       <div className={compacta ? "hidden min-w-0 min-[430px]:block" : "min-w-0"}>
-        <p className="truncate text-sm font-semibold leading-tight text-ink">
-          {config.empresa || "Dashboard Financeiro"}
+        <BaseWordmark tamanho="sm" className="block text-ink" />
+        <p className="mt-1 truncate text-[11px] leading-none text-ink-3">
+          {config.empresa || "Workspace"}
         </p>
-        <p className="truncate text-[11px] leading-tight text-ink-3">{segmento.nome}</p>
       </div>
+    </div>
+  );
+}
+
+function MenuUsuario() {
+  const { usuario, sair, modoLocal } = useAuth();
+  const router = useRouter();
+  const [aberto, setAberto] = useState(false);
+  const container = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const aoClicarFora = (e: MouseEvent) => {
+      if (!container.current?.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, [aberto]);
+
+  if (!usuario) return null;
+
+  const rotulo = usuario.nome || usuario.email || "Conta";
+
+  return (
+    <div ref={container} className="relative">
+      <button
+        onClick={() => setAberto((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={aberto}
+        className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-raised"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[11px] font-bold text-brand">
+          {usuario.convidado ? "?" : iniciais(rotulo)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs font-medium text-ink">{rotulo}</span>
+          <span className="block truncate text-[11px] text-ink-3">
+            {usuario.convidado ? "Sessão de convidado" : modoLocal ? "Sessão local" : "Conectado"}
+          </span>
+        </span>
+      </button>
+
+      {aberto && (
+        <div
+          role="menu"
+          className="absolute bottom-full left-0 z-40 mb-1 w-full overflow-hidden rounded-xl border border-line bg-surface p-1 shadow-xl"
+        >
+          <button
+            role="menuitem"
+            onClick={async () => {
+              setAberto(false);
+              await sair();
+              router.replace("/entrar");
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+          >
+            <LogOut size={15} aria-hidden />
+            Sair da conta
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -133,9 +199,23 @@ function IndicadorArmazenamento() {
   );
 }
 
+const ROTA_ENTRADA = "/entrar";
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { pronto, ocupado } = useData();
+  const { autenticado, carregando } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
   const [menuAberto, setMenuAberto] = useState(false);
+
+  const naEntrada = pathname === ROTA_ENTRADA;
+
+  // Guarda de rota: sem sessão, nada das telas internas é montado.
+  useEffect(() => {
+    if (carregando) return;
+    if (!autenticado && !naEntrada) router.replace(ROTA_ENTRADA);
+    if (autenticado && naEntrada) router.replace("/");
+  }, [autenticado, carregando, naEntrada, router]);
 
   useEffect(() => {
     if (!menuAberto) return;
@@ -146,15 +226,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("keydown", aoTeclar);
   }, [menuAberto]);
 
+  // A tela de entrada tem a própria superfície — nada do chrome do app.
+  if (naEntrada) return <>{children}</>;
+
+  if (carregando || !autenticado) return <TelaDeEspera />;
+
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-64 shrink-0 flex-col gap-6 border-r border-line bg-surface px-3 py-5 lg:flex">
+      {/* Fixa e com rolagem própria: numa página longa o menu não pode subir
+          junto com o conteúdo — a navegação e o botão de sair precisam estar
+          sempre a um clique. */}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 overflow-y-auto border-r border-line bg-surface px-3 py-5 lg:flex">
         <div className="px-2">
           <Marca />
         </div>
         <Navegacao />
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col gap-2">
           <IndicadorArmazenamento />
+          <MenuUsuario />
         </div>
       </aside>
 
@@ -177,8 +266,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <Navegacao aoNavegar={() => setMenuAberto(false)} />
-            <div className="mt-auto">
+            <div className="mt-auto flex flex-col gap-2">
               <IndicadorArmazenamento />
+              <MenuUsuario />
             </div>
           </div>
         </div>
@@ -216,6 +306,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {pronto ? children : <Esqueleto />}
         </main>
       </div>
+    </div>
+  );
+}
+
+/** Enquanto a sessão é resolvida (ou o redirecionamento acontece). */
+function TelaDeEspera() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-entrada">
+      <span className="sr-only" role="status">
+        Carregando
+      </span>
+      <BaseBadge size={48} className="animate-pulse" />
     </div>
   );
 }
