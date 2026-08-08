@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, Eye, EyeOff, HardDrive, Loader2 } from "luci
 import { useAuth } from "@/lib/auth-context";
 import { BaseMark, BaseWordmark } from "@/components/BaseLogo";
 import CampoParticulas from "@/components/CampoParticulas";
+import TaglineRotativa from "@/components/TaglineRotativa";
 import ThemeToggle from "@/components/ThemeToggle";
 
 type Modo = "entrar" | "criar" | "recuperar";
@@ -146,12 +147,7 @@ export default function EntrarPage() {
 
         <BaseWordmark tamanho="lg" className="mt-7 text-marca-tipo" />
 
-        <p className="mt-3 text-center text-[15px] leading-relaxed text-ink-2">
-          <span className="border-b-2 border-brand/45 pb-0.5 font-semibold text-brand">
-            toda decisão
-          </span>{" "}
-          começa na base.
-        </p>
+        <TaglineRotativa className="mt-3" />
 
         <form onSubmit={enviar} noValidate className="mt-9 flex w-full flex-col gap-3.5">
           {modo === "criar" && (
@@ -281,7 +277,8 @@ export default function EntrarPage() {
             <HardDrive size={13} className="mt-0.5 shrink-0" aria-hidden />
             <span className="text-left">
               Modo demonstração: sem Firebase configurado, a sessão fica só neste
-              navegador e não protege os dados de verdade.
+              navegador, não protege os dados de verdade e o login com Google
+              fica indisponível.
             </span>
           </p>
         )}
