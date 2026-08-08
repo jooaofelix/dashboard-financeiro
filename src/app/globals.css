@@ -1,10 +1,186 @@
 @import "tailwindcss";
 
+/*
+ * Tema por token: cada cor é uma variável CSS resolvida em tempo de execução,
+ * então o modo escuro troca os valores em um lugar só — nenhum componente
+ * precisa carregar variantes `dark:`.
+ *
+ * A paleta de séries dos gráficos foi validada (separação para daltonismo,
+ * faixa de luminosidade e contraste) nas duas superfícies: #ffffff e #16161a.
+ */
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+
+  --color-good: var(--good);
+  --color-good-ink: var(--good-ink);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-ink: var(--warn-ink);
+  --color-warn-soft: var(--warn-soft);
+  --color-crit: var(--crit);
+  --color-crit-ink: var(--crit-ink);
+  --color-crit-soft: var(--crit-soft);
+  --color-neutral-soft: var(--neutral-soft);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+  --color-grid: var(--grid);
+  --color-axis: var(--axis);
+}
+
+:root {
+  color-scheme: light;
+
+  --page: #f4f4f2;
+  --surface: #ffffff;
+  --raised: #f8f8f6;
+  --line: #e7e7e1;
+  --line-strong: #d5d5cc;
+
+  --ink: #101010;
+  --ink-2: #52514e;
+  --ink-3: #898781;
+
+  --brand: #4a3aa7;
+  --brand-ink: #ffffff;
+  --brand-soft: #eeecfa;
+
+  --good: #0ca30c;
+  --good-ink: #006300;
+  --good-soft: #e7f4e7;
+  --warn: #fab219;
+  --warn-ink: #8a5a00;
+  --warn-soft: #fdf2db;
+  --crit: #d03b3b;
+  --crit-ink: #a52222;
+  --crit-soft: #fbe9e9;
+  --neutral-soft: #f0f0ec;
+
+  /* Séries categóricas — ordem fixa, nunca reciclada. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+
+  /* Rampa ordinal (aging): um só matiz, claro -> escuro. */
+  --ordinal-1: #86b6ef;
+  --ordinal-2: #5598e7;
+  --ordinal-3: #2a78d6;
+  --ordinal-4: #1c5cab;
+  --ordinal-5: #104281;
+
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page: #0d0d0f;
+  --surface: #16161a;
+  --raised: #1e1e23;
+  --line: #2b2b31;
+  --line-strong: #3a3a41;
+
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --ink-3: #8e8d86;
+
+  --brand: #9085e9;
+  --brand-ink: #17162b;
+  --brand-soft: rgb(144 133 233 / 0.16);
+
+  --good: #0ca30c;
+  --good-ink: #37c437;
+  --good-soft: rgb(12 163 12 / 0.16);
+  --warn: #fab219;
+  --warn-ink: #fab219;
+  --warn-soft: rgb(250 178 25 / 0.14);
+  --crit: #d03b3b;
+  --crit-ink: #e66767;
+  --crit-soft: rgb(208 59 59 / 0.18);
+  --neutral-soft: #24242a;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+
+  --ordinal-1: #9ec5f4;
+  --ordinal-2: #6da7ec;
+  --ordinal-3: #3987e5;
+  --ordinal-4: #256abf;
+  --ordinal-5: #184f95;
+
+  --grid: #2c2c2a;
+  --axis: #383835;
 }
 
 body {
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  background-color: var(--page);
+  color: var(--ink);
+}
+
+/* Colunas de números só alinham com dígitos de largura fixa. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background-color: var(--brand-soft);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: var(--icon-filter, none);
+}
+
+:root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.6);
+}
+
+/* O recharts pinta o retângulo de hover; deixamos o nosso, mais discreto. */
+.recharts-tooltip-cursor {
+  fill: var(--raised);
+}
+
+.recharts-surface:focus,
+.recharts-wrapper:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

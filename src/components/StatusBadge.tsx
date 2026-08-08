@@ -1,23 +1,31 @@
-import { StatusPagamento } from "@/lib/types";
+import { AlertTriangle, Ban, CheckCircle2, Clock, LucideIcon } from "lucide-react";
+import { LABELS_STATUS, StatusPagamento } from "@/lib/types";
 
-const styles: Record<StatusPagamento, string> = {
-  pago: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  pendente: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  atrasado: "bg-rose-50 text-rose-700 ring-rose-600/20",
+/**
+ * Status nunca é só cor: ícone + texto carregam o significado, o que mantém a
+ * leitura correta em impressão, alto contraste e daltonismo.
+ */
+const estilos: Record<StatusPagamento, { classe: string; icone: LucideIcon }> = {
+  pago: { classe: "bg-good-soft text-good-ink", icone: CheckCircle2 },
+  pendente: { classe: "bg-warn-soft text-warn-ink", icone: Clock },
+  atrasado: { classe: "bg-crit-soft text-crit-ink", icone: AlertTriangle },
+  cancelado: { classe: "bg-neutral-soft text-ink-3", icone: Ban },
 };
 
-const labels: Record<StatusPagamento, string> = {
-  pago: "Pago",
-  pendente: "Pendente",
-  atrasado: "Atrasado",
-};
-
-export default function StatusBadge({ status }: { status: StatusPagamento }) {
+export default function StatusBadge({
+  status,
+  compacto = false,
+}: {
+  status: StatusPagamento;
+  compacto?: boolean;
+}) {
+  const { classe, icone: Icone } = estilos[status];
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${styles[status]}`}
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${classe}`}
     >
-      {labels[status]}
+      <Icone size={12} aria-hidden />
+      {!compacto && LABELS_STATUS[status]}
     </span>
   );
 }

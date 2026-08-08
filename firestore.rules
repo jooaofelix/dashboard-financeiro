@@ -1,11 +1,26 @@
 rules_version = '2';
 
+// Libera leitura/escrita apenas para sessões autenticadas (a autenticação
+// anônima do app já basta). Cada coleção é declarada explicitamente para que
+// nada fora do modelo do app fique acessível.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /consultas/{docId} {
+    match /clientes/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /servicos/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /profissionais/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /atendimentos/{docId} {
       allow read, write: if request.auth != null;
     }
     match /transacoes/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /configuracao/{docId} {
       allow read, write: if request.auth != null;
     }
   }

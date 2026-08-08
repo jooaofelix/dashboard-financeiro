@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { DataProvider } from "@/lib/data-context";
-import Sidebar from "@/components/Sidebar";
-import MobileNav from "@/components/MobileNav";
+import { PeriodoProvider } from "@/lib/periodo-context";
+import AppShell from "@/components/AppShell";
+import { SCRIPT_TEMA } from "@/lib/tema";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard Financeiro",
-  description: "Controle financeiro e de pagamentos de consultas",
+  title: "Gestão Financeira | Dashboard",
+  description:
+    "Dashboard financeiro para empresas de serviços: faturamento, contas, fluxo de caixa projetado, DRE e relatórios gerenciais.",
 };
 
 export default function RootLayout({
@@ -28,17 +30,18 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex bg-slate-50 text-slate-900">
+      <head>
+        {/* Aplica o tema antes da primeira pintura para não haver flash de claro. */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+      </head>
+      <body className="min-h-full">
         <DataProvider>
-          <Sidebar />
-          <div className="flex-1 min-w-0 flex flex-col">
-            <MobileNav />
-            <main className="flex-1 min-w-0 px-4 py-6 sm:px-8 sm:py-8">
-              {children}
-            </main>
-          </div>
+          <PeriodoProvider>
+            <AppShell>{children}</AppShell>
+          </PeriodoProvider>
         </DataProvider>
       </body>
     </html>
