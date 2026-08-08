@@ -96,9 +96,18 @@ function validarLocal(email: string, senha: string) {
 }
 
 interface SessaoLocal {
+  uid: string;
   email: string;
   nome: string | null;
   convidado: boolean;
+}
+
+/**
+ * Identidade estável por e-mail: no modo local é ela que separa o workspace de
+ * cada conta no mesmo navegador. Não é segredo nem credencial — só uma chave.
+ */
+function uidLocal(email: string) {
+  return `local-${email.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -169,7 +178,7 @@ function useAuthLocal(): AuthContextValue {
   return useMemo<AuthContextValue>(() => {
     const usuario: Usuario | null = sessao
       ? {
-          uid: "local",
+          uid: sessao.uid,
           email: sessao.email,
           nome: sessao.nome,
           convidado: sessao.convidado,
@@ -182,15 +191,27 @@ function useAuthLocal(): AuthContextValue {
       carregando: !montado,
       modoLocal: true,
       entrar: async (email, senha) => {
-        validarLocal(email.trim(), senha);
-        setSessao({ email: email.trim(), nome: null, convidado: false });
+        const limpo = email.trim();
+        validarLocal(limpo, senha);
+        setSessao({ uid: uidLocal(limpo), email: limpo, nome: null, convidado: false });
       },
       criarConta: async (nome, email, senha) => {
-        validarLocal(email.trim(), senha);
-        setSessao({ email: email.trim(), nome: nome.trim() || null, convidado: false });
+        const limpo = email.trim();
+        validarLocal(limpo, senha);
+        setSessao({
+          uid: uidLocal(limpo),
+          email: limpo,
+          nome: nome.trim() || null,
+          convidado: false,
+        });
       },
       entrarComoConvidado: async () => {
-        setSessao({ email: "convidado@base.local", nome: "Convidado", convidado: true });
+        setSessao({
+          uid: "local-convidado",
+          email: "convidado@base.local",
+          nome: "Convidado",
+          convidado: true,
+        });
       },
       recuperarSenha: async () => {
         throw new ErroDeAutenticacao(

@@ -28,6 +28,7 @@
   --color-brand: var(--brand);
   --color-brand-ink: var(--brand-ink);
   --color-brand-soft: var(--brand-soft);
+  --color-marca-tipo: var(--marca-tipo);
 
   --color-good: var(--good);
   --color-good-ink: var(--good-ink);
@@ -63,9 +64,20 @@
   --ink-2: #52514e;
   --ink-3: #898781;
 
-  --brand: #4a3aa7;
+  /* Ação e navegação: o azul do logotipo, um degrau mais fundo para o texto
+     pequeno e o botão primário passarem em contraste (5,1:1 contra o branco).
+     O tom vivo do logotipo fica preservado nos tokens `--marca-*`. */
+  --brand: #0a6fc4;
   --brand-ink: #ffffff;
-  --brand-soft: #eeecfa;
+  --brand-soft: #e6f2fd;
+
+  /* A marca: gradiente do símbolo e o azul-marinho da assinatura. */
+  --marca-de: #1479e8;
+  --marca-ate: #16e0d0;
+  --marca-arco-de: #0a7ae8;
+  --marca-arco-ate: #2ab7f5;
+  --marca-tipo: #123a63;
+  --marca-selo: #ffffff;
 
   --good: #0ca30c;
   --good-ink: #006300;
@@ -97,10 +109,10 @@
   --axis: #c3c2b7;
 
   /* Superfície das telas de entrada */
-  --entrada-fundo: #fafafe;
-  --entrada-veu: rgb(74 58 167 / 0.09);
-  --entrada-borda: #e2dff5;
-  --entrada-placeholder: #a5a1c4;
+  --entrada-fundo: #f8fcff;
+  --entrada-veu: rgb(22 190 214 / 0.11);
+  --entrada-borda: #d8e9f7;
+  --entrada-placeholder: #93b0c7;
 }
 
 :root[data-theme="dark"] {
@@ -116,9 +128,17 @@
   --ink-2: #c3c2b7;
   --ink-3: #8e8d86;
 
-  --brand: #9085e9;
-  --brand-ink: #17162b;
-  --brand-soft: rgb(144 133 233 / 0.16);
+  --brand: #4fb4f5;
+  --brand-ink: #04243f;
+  --brand-soft: rgb(79 180 245 / 0.16);
+
+  --marca-de: #2b8bf0;
+  --marca-ate: #2ceadb;
+  --marca-arco-de: #1f8cf0;
+  --marca-arco-ate: #45c6fa;
+  /* No escuro a assinatura não pode ser marinho: some no fundo. */
+  --marca-tipo: #dbeaf7;
+  --marca-selo: #10222f;
 
   --good: #0ca30c;
   --good-ink: #37c437;
@@ -147,10 +167,10 @@
   --grid: #2c2c2a;
   --axis: #383835;
 
-  --entrada-fundo: #0b0b10;
-  --entrada-veu: rgb(144 133 233 / 0.13);
-  --entrada-borda: #2f2c45;
-  --entrada-placeholder: #6f6c8a;
+  --entrada-fundo: #05121c;
+  --entrada-veu: rgb(45 200 220 / 0.12);
+  --entrada-borda: #1d3a4f;
+  --entrada-placeholder: #64879e;
 }
 
 body {

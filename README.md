@@ -10,10 +10,24 @@ custo — a lógica financeira é a mesma para todos.
 
 ## A marca
 
-O nome vem da **linha de base**: o zero de onde tudo cresce num gráfico e a
-fundação sobre a qual uma operação se sustenta. A marca é exatamente isso — três
-colunas subindo de uma régua sólida — e o produto inteiro é construído em cima
-dessa ideia: primeiro os números confiáveis, depois a decisão.
+Três colunas crescendo em gradiente do azul ao ciano, apoiadas sobre um arco que
+sobe à direita — o gráfico e a fundação na mesma forma. A assinatura é caixa
+alta, peso leve, entreletras aberto, com o "A" desenhado como chevron.
+
+Tudo é vetorial e temático (`src/components/BaseLogo.tsx`): o símbolo, o selo e a
+assinatura acompanham o tema claro/escuro e qualquer tamanho, sem imagem
+rasterizada. A paleta sai do próprio logotipo:
+
+| Token | Papel | Claro | Escuro |
+|---|---|---|---|
+| `--marca-de` → `--marca-ate` | gradiente das colunas | `#1479e8` → `#16e0d0` | `#2b8bf0` → `#2ceadb` |
+| `--marca-arco-de` → `--marca-arco-ate` | gradiente do arco | `#0a7ae8` → `#2ab7f5` | `#1f8cf0` → `#45c6fa` |
+| `--marca-tipo` | assinatura | `#123a63` | `#dbeaf7` |
+| `--brand` | ação, links, navegação | `#0a6fc4` | `#4fb4f5` |
+
+O azul de ação é um degrau mais fundo que o do logotipo de propósito: assim
+links e o botão primário passam em contraste (5,1:1 contra o branco), enquanto o
+símbolo mantém o tom vivo original.
 
 ## Segmentos disponíveis
 
@@ -94,23 +108,44 @@ operação fictícia** para o segmento escolhido, de forma determinística — o
 gráficos não mudam a cada recarregamento. Em **Configurações › Dados** você
 recarrega o exemplo (útil ao trocar de segmento) ou começa do zero.
 
-## Acesso e contas
+## Contas e isolamento de dados
 
-O login usa **Firebase Authentication** (e-mail/senha, com recuperação por
-e-mail) e oferece entrada como **convidado** (sessão anônima). Sem Firebase
-configurado, a tela funciona em **modo demonstração**: a sessão fica no navegador
-e a própria tela avisa que ali não há proteção real — um cadeado que não tranca é
-pior do que nenhum.
+BASE é multi-inquilino: **cada conta tem o próprio workspace**, invisível para
+todas as outras. O login usa **Firebase Authentication** (e-mail/senha, com
+recuperação por e-mail) e oferece entrada como **convidado** (sessão anônima, com
+workspace próprio e descartável).
 
-O workspace é **único e compartilhado**: BASE é o painel de *uma* empresa, então
-todo mundo que entra vê os mesmos livros. O login controla quem acessa o
-workspace, não separa dados por usuário.
+```
+usuarios/{uid}                    perfil + configurações do workspace
+usuarios/{uid}/clientes/…
+usuarios/{uid}/servicos/…
+usuarios/{uid}/profissionais/…
+usuarios/{uid}/atendimentos/…
+usuarios/{uid}/transacoes/…
+```
 
-## Persistência
+O isolamento é garantido pelas **regras do Firestore**, não pelo cliente: a regra
+casa o `uid` do caminho com o da sessão, então nem um app adulterado nem uma
+chamada direta à API alcançam dados de outra conta. Qualquer caminho fora desse
+modelo é negado por padrão.
 
-Sem configuração, tudo é salvo no `localStorage` do navegador — dá para avaliar o
-sistema inteiro sem criar conta em lugar nenhum. Com o Firebase configurado, os
-dados vão para o Firestore e sincronizam entre dispositivos.
+Isso é testável — e testado:
+
+```bash
+npm run test:rules
+```
+
+Sobe o emulador do Firestore e verifica 14 cenários: o dono lê e escreve o que é
+dele, outra conta não lê/lista/escreve/apaga nada alheio, sessão anônima não
+acessa nada, e caminhos fora do modelo são negados.
+
+### Modo demonstração (sem Firebase)
+
+Sem as variáveis de ambiente, a sessão fica no navegador e cada conta local tem
+as próprias chaves no `localStorage` (`base:{conta}:atendimentos`, …) — duas
+contas no mesmo navegador não se enxergam. A tela de login avisa, com todas as
+letras, que ali não há proteção real: um cadeado que não tranca é pior do que
+nenhum. Serve para avaliar o produto inteiro sem infraestrutura.
 
 ### Configurando o Firebase
 
@@ -129,9 +164,10 @@ dados vão para o Firestore e sincronizam entre dispositivos.
 6. Publique as regras de `firestore.rules` (aba **Regras** do Firestore, ou
    `firebase deploy --only firestore:rules`). Elas liberam leitura e escrita apenas
    para sessões autenticadas, coleção por coleção.
-7. Reinicie o `npm run dev`. As coleções `clientes`, `servicos`, `profissionais`,
-   `atendimentos`, `transacoes` e o documento `configuracao/workspace` são criados
-   na primeira execução.
+7. Reinicie o `npm run dev`. Ao entrar pela primeira vez, o workspace da conta é
+   criado em `usuarios/{uid}` com a base de demonstração — o painel nunca abre
+   vazio. Em **Configurações › Dados** dá para recarregar o exemplo ou começar do
+   zero.
 
 Se as variáveis não forem definidas, o app continua no modo local sem erros.
 
@@ -152,5 +188,7 @@ src/
     finance.ts          motor financeiro: resumo, DRE, aging, projeção, comissões
     periodo.ts          presets de período e comparação com o anterior
     demo-data.ts        gerador determinístico da base de demonstração
-    data-context.tsx    camada de dados (localStorage ou Firestore)
+    data-context.tsx    camada de dados por conta (localStorage ou Firestore)
+tests/
+  firestore-rules.test.mjs   isolamento entre contas, contra o emulador
 ```

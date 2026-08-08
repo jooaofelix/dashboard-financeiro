@@ -54,7 +54,7 @@ export default function CampoParticulas({ className = "" }: { className?: string
           cx={`${p.x}%`}
           cy={`${p.y}%`}
           r={p.r}
-          fill="var(--brand)"
+          fill="var(--marca-arco-ate)"
           opacity={p.o}
         />
       ))}

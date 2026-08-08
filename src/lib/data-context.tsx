@@ -33,8 +33,24 @@ import {
 import { db, isFirebaseConfigured } from "./firebase";
 import { useMontado } from "./use-montado";
 
+/**
+ * Multi-inquilino: cada conta tem o próprio workspace, isolado de todas as
+ * outras.
+ *
+ * - **Firestore**: `usuarios/{uid}` guarda perfil e configuração, e as coleções
+ *   ficam abaixo dele (`usuarios/{uid}/atendimentos`, ...). As regras casam o
+ *   `uid` do caminho com o da sessão, então o isolamento é garantido no
+ *   servidor, não só no cliente.
+ * - **Local**: as chaves do `localStorage` levam o id da sessão, para duas
+ *   contas no mesmo navegador não enxergarem uma a outra.
+ */
+
 const COLECOES = ["clientes", "servicos", "profissionais", "atendimentos", "transacoes"] as const;
 type NomeColecao = (typeof COLECOES)[number];
+
+export function caminhoWorkspace(uid: string) {
+  return `usuarios/${uid}`;
+}
 
 /** Gerar 12 meses de histórico não é barato — memoriza por segmento. */
 const cacheDemo = new Map<string, BaseDados>();
@@ -52,6 +68,12 @@ interface Crud<T extends { id: string }> {
   remove: (id: string) => void;
 }
 
+const CRUD_INERTE: Crud<{ id: string }> = {
+  add: () => {},
+  update: () => {},
+  remove: () => {},
+};
+
 export interface DataContextValue extends BaseDados {
   config: Configuracao;
   segmento: Segmento;
@@ -61,7 +83,7 @@ export interface DataContextValue extends BaseDados {
   profissionaisCrud: Crud<Profissional>;
   atendimentosCrud: Crud<Atendimento>;
   transacoesCrud: Crud<Transacao>;
-  /** Recria a base inteira com os dados de exemplo do segmento escolhido. */
+  /** Recria a base do workspace atual com os dados de exemplo do segmento. */
   recarregarDemo: (segmentoId: string) => Promise<void>;
   limparTudo: () => Promise<void>;
   usandoFirebase: boolean;
@@ -80,7 +102,7 @@ function gerarId() {
 /* -------------------------------------------------------------------------- */
 
 function useColecaoLocal<T extends { id: string }>(chave: string, inicial: T[]) {
-  const [itens, setItens] = useLocalStorage<T[]>(`df:${chave}`, inicial);
+  const [itens, setItens] = useLocalStorage<T[]>(chave, inicial);
 
   const crud = useMemo<Crud<T>>(
     () => ({
@@ -95,15 +117,25 @@ function useColecaoLocal<T extends { id: string }>(chave: string, inicial: T[]) 
   return { itens, crud, substituir: setItens };
 }
 
-function useDadosLocais() {
+function useDadosLocais(uid: string | null) {
   const demo = baseDemo(SEGMENTO_PADRAO);
-  const clientes = useColecaoLocal<Cliente>("clientes", demo.clientes);
-  const servicos = useColecaoLocal<Servico>("servicos", demo.servicos);
-  const profissionais = useColecaoLocal<Profissional>("profissionais", demo.profissionais);
-  const atendimentos = useColecaoLocal<Atendimento>("atendimentos", demo.atendimentos);
-  const transacoes = useColecaoLocal<Transacao>("transacoes", demo.transacoes);
+  // Sem sessão a chave é descartável: o conteúdo nunca chega à tela porque o
+  // AppShell só monta o app autenticado.
+  const prefixo = `base:${uid ?? "anonimo"}`;
+
+  const clientes = useColecaoLocal<Cliente>(`${prefixo}:clientes`, demo.clientes);
+  const servicos = useColecaoLocal<Servico>(`${prefixo}:servicos`, demo.servicos);
+  const profissionais = useColecaoLocal<Profissional>(
+    `${prefixo}:profissionais`,
+    demo.profissionais
+  );
+  const atendimentos = useColecaoLocal<Atendimento>(
+    `${prefixo}:atendimentos`,
+    demo.atendimentos
+  );
+  const transacoes = useColecaoLocal<Transacao>(`${prefixo}:transacoes`, demo.transacoes);
   const [config, setConfig] = useLocalStorage<Configuracao>(
-    "df:config",
+    `${prefixo}:config`,
     configuracaoPadrao(SEGMENTO_PADRAO)
   );
 
@@ -124,7 +156,7 @@ function useDadosLocais() {
       setConfig(configuracaoPadrao(segmentoId));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setConfig]
+    [setConfig, prefixo]
   );
 
   const limparTudo = useCallback(async () => {
@@ -134,7 +166,7 @@ function useDadosLocais() {
     atendimentos.substituir([]);
     transacoes.substituir([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [prefixo]);
 
   return {
     clientes: clientes.itens,
@@ -161,6 +193,7 @@ function useDadosLocais() {
 
 /** O Firestore aceita no máximo 500 operações por lote. */
 async function gravarEmLotes(
+  raiz: string,
   operacoes: { colecao: NomeColecao; dados: Record<string, unknown> }[]
 ) {
   if (!db) return;
@@ -168,18 +201,18 @@ async function gravarEmLotes(
   for (let i = 0; i < operacoes.length; i += 450) {
     const lote = writeBatch(database);
     for (const op of operacoes.slice(i, i + 450)) {
-      const referencia = firestoreDoc(collection(database, op.colecao));
+      const referencia = firestoreDoc(collection(database, `${raiz}/${op.colecao}`));
       lote.set(referencia, op.dados);
     }
     await lote.commit();
   }
 }
 
-async function apagarColecoes() {
+async function apagarColecoes(raiz: string) {
   if (!db) return;
   const database = db;
   for (const nome of COLECOES) {
-    const snapshot = await getDocs(collection(database, nome));
+    const snapshot = await getDocs(collection(database, `${raiz}/${nome}`));
     const docs = snapshot.docs;
     for (let i = 0; i < docs.length; i += 450) {
       const lote = writeBatch(database);
@@ -207,52 +240,65 @@ function paraOperacoes(base: BaseDados) {
   return operacoes;
 }
 
-function useDadosFirestore(authReady: boolean, setOcupado: (v: boolean) => void) {
-  const clientes = useFirestoreCollection<Cliente>("clientes", authReady);
-  const servicos = useFirestoreCollection<Servico>("servicos", authReady);
-  const profissionais = useFirestoreCollection<Profissional>("profissionais", authReady);
-  const atendimentos = useFirestoreCollection<Atendimento>("atendimentos", authReady);
-  const transacoes = useFirestoreCollection<Transacao>("transacoes", authReady);
+function useDadosFirestore(uid: string | null, setOcupado: (v: boolean) => void) {
+  const raiz = uid ? caminhoWorkspace(uid) : null;
+
+  const clientes = useFirestoreCollection<Cliente>(raiz && `${raiz}/clientes`);
+  const servicos = useFirestoreCollection<Servico>(raiz && `${raiz}/servicos`);
+  const profissionais = useFirestoreCollection<Profissional>(
+    raiz && `${raiz}/profissionais`
+  );
+  const atendimentos = useFirestoreCollection<Atendimento>(raiz && `${raiz}/atendimentos`);
+  const transacoes = useFirestoreCollection<Transacao>(raiz && `${raiz}/transacoes`);
   const configDoc = useFirestoreDoc<Configuracao>(
-    ["configuracao", "workspace"],
-    configuracaoPadrao(SEGMENTO_PADRAO),
-    authReady
+    raiz,
+    configuracaoPadrao(SEGMENTO_PADRAO)
   );
 
-  const semeado = useRef(false);
+  /** Qual workspace já foi semeado — reinicia quando a conta muda. */
+  const workspaceSemeado = useRef<string | null>(null);
 
   const recarregarDemo = useCallback(
     async (segmentoId: string) => {
+      if (!raiz) return;
       setOcupado(true);
       try {
-        await apagarColecoes();
-        await gravarEmLotes(paraOperacoes(gerarBaseDemo(segmentoId)));
+        await apagarColecoes(raiz);
+        await gravarEmLotes(raiz, paraOperacoes(gerarBaseDemo(segmentoId)));
         configDoc.salvar(configuracaoPadrao(segmentoId));
       } finally {
         setOcupado(false);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setOcupado]
+    [raiz, setOcupado]
   );
 
   const limparTudo = useCallback(async () => {
+    if (!raiz) return;
     setOcupado(true);
     try {
-      await apagarColecoes();
+      await apagarColecoes(raiz);
     } finally {
       setOcupado(false);
     }
-  }, [setOcupado]);
+  }, [raiz, setOcupado]);
 
-  // Primeira execução: popula o Firestore com a base de demonstração.
+  // Workspace novo: entra com a base de demonstração para o painel não abrir vazio.
   useEffect(() => {
-    if (!authReady || !db || semeado.current || !clientes.carregado) return;
-    semeado.current = true;
+    if (!raiz || !db || !clientes.carregado || !configDoc.carregado) return;
+    if (workspaceSemeado.current === raiz) return;
+    workspaceSemeado.current = raiz;
     if (clientes.items.length > 0 || atendimentos.items.length > 0) return;
     void recarregarDemo(configDoc.valor.segmentoId || SEGMENTO_PADRAO);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authReady, clientes.carregado, clientes.items.length, atendimentos.items.length]);
+  }, [
+    raiz,
+    clientes.carregado,
+    configDoc.carregado,
+    clientes.items.length,
+    atendimentos.items.length,
+  ]);
 
   return {
     clientes: clientes.items,
@@ -276,14 +322,12 @@ function useDadosFirestore(authReady: boolean, setOcupado: (v: boolean) => void)
 /* -------------------------------------------------------------------------- */
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  // Só conversa com o Firestore depois que existe sessão — antes disso as
-  // regras negariam a leitura de qualquer jeito.
-  const { autenticado } = useAuth();
-  const authReady = autenticado;
+  const { usuario } = useAuth();
+  const uid = usuario?.uid ?? null;
   const [ocupado, setOcupado] = useState(false);
 
-  const locais = useDadosLocais();
-  const remotos = useDadosFirestore(authReady, setOcupado);
+  const locais = useDadosLocais(uid);
+  const remotos = useDadosFirestore(uid, setOcupado);
   const dados = isFirebaseConfigured ? remotos : locais;
 
   // Os dados só existem no navegador; renderizar antes de montar causaria
@@ -292,26 +336,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<DataContextValue>(
     () => ({
-      clientes: dados.clientes,
-      servicos: dados.servicos,
-      profissionais: dados.profissionais,
-      atendimentos: dados.atendimentos,
-      transacoes: dados.transacoes,
+      // Sem sessão nada é exposto — nem o resíduo do último workspace aberto.
+      clientes: uid ? dados.clientes : [],
+      servicos: uid ? dados.servicos : [],
+      profissionais: uid ? dados.profissionais : [],
+      atendimentos: uid ? dados.atendimentos : [],
+      transacoes: uid ? dados.transacoes : [],
       config: dados.config,
       segmento: getSegmento(dados.config.segmentoId),
-      salvarConfig: dados.salvarConfig,
-      clientesCrud: dados.clientesCrud,
-      servicosCrud: dados.servicosCrud,
-      profissionaisCrud: dados.profissionaisCrud,
-      atendimentosCrud: dados.atendimentosCrud,
-      transacoesCrud: dados.transacoesCrud,
+      salvarConfig: uid ? dados.salvarConfig : () => {},
+      clientesCrud: uid ? dados.clientesCrud : (CRUD_INERTE as Crud<Cliente>),
+      servicosCrud: uid ? dados.servicosCrud : (CRUD_INERTE as Crud<Servico>),
+      profissionaisCrud: uid
+        ? dados.profissionaisCrud
+        : (CRUD_INERTE as Crud<Profissional>),
+      atendimentosCrud: uid ? dados.atendimentosCrud : (CRUD_INERTE as Crud<Atendimento>),
+      transacoesCrud: uid ? dados.transacoesCrud : (CRUD_INERTE as Crud<Transacao>),
       recarregarDemo: dados.recarregarDemo,
       limparTudo: dados.limparTudo,
       usandoFirebase: isFirebaseConfigured,
-      pronto: montado && dados.carregado,
+      pronto: montado && uid !== null && dados.carregado,
       ocupado,
     }),
-    [dados, montado, ocupado]
+    [dados, uid, montado, ocupado]
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

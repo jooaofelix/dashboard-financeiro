@@ -1,27 +1,30 @@
 rules_version = '2';
 
-// Libera leitura/escrita apenas para sessões autenticadas (a autenticação
-// anônima do app já basta). Cada coleção é declarada explicitamente para que
-// nada fora do modelo do app fique acessível.
+/*
+ * BASE é multi-inquilino: cada conta tem o próprio workspace em
+ * `usuarios/{uid}`, com as coleções abaixo dele.
+ *
+ * O isolamento vive AQUI, não no cliente. A regra casa o `uid` do caminho com o
+ * `uid` da sessão, então nem um app adulterado nem um acesso direto à API
+ * conseguem ler ou escrever dados de outra conta. Não existe regra em nível de
+ * raiz: qualquer caminho fora deste é negado por padrão.
+ */
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /clientes/{docId} {
-      allow read, write: if request.auth != null;
+
+    function donoDaConta(uid) {
+      return request.auth != null && request.auth.uid == uid;
     }
-    match /servicos/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /profissionais/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /atendimentos/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /transacoes/{docId} {
-      allow read, write: if request.auth != null;
-    }
-    match /configuracao/{docId} {
-      allow read, write: if request.auth != null;
+
+    // Perfil + configurações do workspace.
+    match /usuarios/{uid} {
+      allow read, write: if donoDaConta(uid);
+
+      // Clientes, serviços, profissionais, atendimentos e transações — e
+      // qualquer subcoleção futura do mesmo workspace.
+      match /{documento=**} {
+        allow read, write: if donoDaConta(uid);
+      }
     }
   }
 }

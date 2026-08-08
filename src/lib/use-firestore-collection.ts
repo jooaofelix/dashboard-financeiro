@@ -19,41 +19,67 @@ function semUndefined<T extends object>(objeto: T): DocumentData {
   );
 }
 
+interface Estado<T> {
+  caminho: string | null;
+  items: T[];
+  carregado: boolean;
+}
+
+/**
+ * `caminho` é o caminho completo da subcoleção do usuário —
+ * `usuarios/{uid}/clientes`. Quando é `null` não há sessão ainda e o hook fica
+ * inerte: assinar uma coleção sem dono seria negado pelas regras de qualquer
+ * forma.
+ *
+ * O caminho é guardado junto com os dados e conferido durante o render, então
+ * uma troca de conta nunca exibe o resíduo da conta anterior — sem precisar
+ * limpar estado dentro do efeito.
+ */
 export function useFirestoreCollection<T extends { id: string }>(
-  collectionName: string,
-  enabled: boolean
+  caminho: string | null
 ) {
-  const [items, setItems] = useState<T[]>([]);
-  const [carregado, setCarregado] = useState(false);
+  const [estado, setEstado] = useState<Estado<T>>({
+    caminho,
+    items: [],
+    carregado: false,
+  });
 
   useEffect(() => {
-    if (!enabled || !db) return;
-
-    return onSnapshot(collection(db, collectionName), (snapshot) => {
-      setItems(
-        snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as T)
-      );
-      setCarregado(true);
+    if (!caminho || !db) return;
+    return onSnapshot(collection(db, caminho), (snapshot) => {
+      setEstado({
+        caminho,
+        items: snapshot.docs.map(
+          (docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as T
+        ),
+        carregado: true,
+      });
     });
-  }, [collectionName, enabled]);
+  }, [caminho]);
+
+  const atual = estado.caminho === caminho;
 
   const crud = useMemo(
     () => ({
       add: (item: Omit<T, "id">) => {
-        if (!db) return;
-        void addDoc(collection(db, collectionName), semUndefined(item));
+        if (!db || !caminho) return;
+        void addDoc(collection(db, caminho), semUndefined(item));
       },
       update: (id: string, patch: Partial<T>) => {
-        if (!db) return;
-        void updateDoc(doc(db, collectionName, id), semUndefined(patch));
+        if (!db || !caminho) return;
+        void updateDoc(doc(db, caminho, id), semUndefined(patch));
       },
       remove: (id: string) => {
-        if (!db) return;
-        void deleteDoc(doc(db, collectionName, id));
+        if (!db || !caminho) return;
+        void deleteDoc(doc(db, caminho, id));
       },
     }),
-    [collectionName]
+    [caminho]
   );
 
-  return { items, crud, carregado };
+  return {
+    items: atual ? estado.items : [],
+    carregado: atual && estado.carregado,
+    crud,
+  };
 }

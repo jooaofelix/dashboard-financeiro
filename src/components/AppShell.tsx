@@ -75,7 +75,7 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
       <BaseBadge size={36} />
       {/* Em telas estreitas o nome viraria "Clí…" e não informa nada: só o selo fica. */}
       <div className={compacta ? "hidden min-w-0 min-[430px]:block" : "min-w-0"}>
-        <BaseWordmark tamanho="sm" className="block text-ink" />
+        <BaseWordmark tamanho="sm" className="block text-marca-tipo" />
         <p className="mt-1 truncate text-[11px] leading-none text-ink-3">
           {config.empresa || "Workspace"}
         </p>

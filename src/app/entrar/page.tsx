@@ -106,11 +106,11 @@ export default function EntrarPage() {
 
       <div className="relative z-10 flex w-full max-w-[440px] flex-col items-center">
         {/* Selo da marca flutuando sobre o fundo. */}
-        <div className="flex h-[104px] w-[104px] items-center justify-center rounded-[28px] bg-surface text-brand shadow-[0_18px_40px_-12px_rgb(74_58_167/0.35)]">
+        <div className="flex h-[104px] w-[104px] items-center justify-center rounded-[28px] bg-surface text-brand shadow-[0_18px_44px_-14px_rgb(11_127_224/0.45)]">
           <BaseMark size={54} />
         </div>
 
-        <BaseWordmark tamanho="lg" className="mt-7 text-[3.25rem] text-brand" />
+        <BaseWordmark tamanho="lg" className="mt-7 text-marca-tipo" />
 
         <p className="mt-3 text-center text-[15px] leading-relaxed text-ink-2">
           <span className="border-b-2 border-brand/45 pb-0.5 font-semibold text-brand">
