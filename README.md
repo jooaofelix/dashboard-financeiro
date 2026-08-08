@@ -171,6 +171,39 @@ nenhum. Serve para avaliar o produto inteiro sem infraestrutura.
 
 Se as variáveis não forem definidas, o app continua no modo local sem erros.
 
+## Deploy
+
+O app é um **export estático** (`output: "export"` no `next.config.ts`): não há
+rotas de API, server actions nem imagens otimizadas, então `npm run build` gera a
+pasta `out/` com HTML, CSS e JS prontos para qualquer CDN.
+
+### Cloudflare Workers
+
+O `wrangler.jsonc` do repositório configura um Worker **só de assets**, apontando
+para `out/`:
+
+```bash
+npm run preview   # build + wrangler dev (pré-visualização local)
+npm run deploy    # build + wrangler deploy
+```
+
+Se você publicar pelo painel do Cloudflare (Workers Builds), use:
+
+| Campo | Valor |
+|---|---|
+| Comando de build | `npm run build` |
+| Diretório de saída | `out` |
+
+> **As variáveis do Firebase são embutidas no build, não lidas em runtime.**
+> Por serem `NEXT_PUBLIC_*`, o Next as substitui no bundle durante `next build`.
+> No Cloudflare elas precisam estar como **variáveis de build**, não como
+> secrets do Worker — configuradas só em runtime, o app sobe em modo local e
+> nada é gravado no Firestore.
+
+Sem um servidor, um Worker configurado para executar código Next não tem o que
+rodar e responde `Internal Server Error` — é para isso que serve a configuração
+de assets acima.
+
 ## Estrutura
 
 ```

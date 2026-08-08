@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "base",
+  "compatibility_date": "2026-08-08",
+
+  // Worker só de assets: o app é um export estático do Next, então não há
+  // script de servidor para executar. Era isso que faltava — sem esta
+  // configuração o Worker tentava rodar um servidor inexistente e devolvia
+  // "Internal Server Error".
+  "assets": {
+    "directory": "./out",
+    // O export usa `trailingSlash`, então cada rota é uma pasta com index.html.
+    "html_handling": "auto-trailing-slash",
+    // Caminho desconhecido cai na página 404 do próprio Next.
+    "not_found_handling": "404-page"
+  }
+}

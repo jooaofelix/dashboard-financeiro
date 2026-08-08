@@ -146,7 +146,7 @@ function MenuUsuario() {
 }
 
 function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
-  const pathname = usePathname();
+  const rota = normalizarRota(usePathname());
   const grupos = useNavegacao();
 
   return (
@@ -158,7 +158,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
           </p>
           <ul className="flex flex-col gap-0.5">
             {itens.map(({ href, label, icon: Icon }) => {
-              const ativo = href === "/" ? pathname === "/" : pathname.startsWith(href);
+              const ativo = href === "/" ? rota === "/" : rota.startsWith(href);
               return (
                 <li key={href}>
                   <Link
@@ -201,6 +201,16 @@ function IndicadorArmazenamento() {
 
 const ROTA_ENTRADA = "/entrar";
 
+/**
+ * Normaliza a barra final antes de comparar rotas. Hosts estáticos servem a
+ * mesma página como `/entrar` ou `/entrar/` conforme a configuração, e uma
+ * comparação literal deixaria a guarda de rota sem reconhecer a tela de entrada
+ * — o app ficaria preso em "Carregando".
+ */
+function normalizarRota(pathname: string) {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { pronto, ocupado } = useData();
   const { autenticado, carregando } = useAuth();
@@ -208,7 +218,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [menuAberto, setMenuAberto] = useState(false);
 
-  const naEntrada = pathname === ROTA_ENTRADA;
+  const naEntrada = normalizarRota(pathname) === ROTA_ENTRADA;
 
   // Guarda de rota: sem sessão, nada das telas internas é montado.
   useEffect(() => {
