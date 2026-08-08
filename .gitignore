@@ -44,3 +44,7 @@ next-env.d.ts
 
 # cloudflare wrangler
 /.wrangler/
+
+# emulador do firestore
+firestore-debug.log
+*.log
