@@ -8,6 +8,7 @@ import {
   todayISO,
 } from "./format";
 import { getSegmento, Segmento } from "./segments";
+import { faturamentoPorMes } from "./finance";
 import {
   Atendimento,
   BaseDados,
@@ -126,7 +127,11 @@ function fatorDoMes(indice: number, total: number, random: () => number) {
   return crescimento * sazonal * ruido;
 }
 
-export function configuracaoPadrao(segmentoId: string): Configuracao {
+/**
+ * Configuração inicial de um segmento. Recebendo a base de demonstração junto,
+ * o plano de crescimento é calibrado por ela — ver `planoDemo`.
+ */
+export function configuracaoPadrao(segmentoId: string, base?: BaseDados): Configuracao {
   const segmento = getSegmento(segmentoId);
   return {
     segmentoId: segmento.id,
@@ -137,12 +142,43 @@ export function configuracaoPadrao(segmentoId: string): Configuracao {
     saldoInicialCaixa: Math.round(segmento.tetoDespesaMensal * 0.9),
     reservaMinimaCaixa: Math.round(segmento.tetoDespesaMensal * 1.5),
     diasAlertaVencimento: 7,
-    // Plano de doze meses já em curso há seis: assim a demonstração mostra a
-    // rampa com meses fechados de um lado e o prazo aberto do outro, que é
-    // como um plano de verdade aparece.
-    faturamentoBase: Math.round(segmento.metaReceitaMensal * 0.72),
+    ...planoDemo(base),
+  };
+}
+
+/**
+ * Plano de doze meses já em curso há seis, **calibrado pelo faturamento que a
+ * própria base fictícia produz**.
+ *
+ * Um plano tirado do preset do segmento erraria a escala da demonstração: os
+ * alvos ficariam todos abaixo do que a operação já entrega e a rampa apareceria
+ * cumprida com folga em todos os meses — uma demonstração que não demonstra
+ * nada. Partindo do faturamento real de sete meses atrás e mirando 20% acima do
+ * último mês fechado, alguns marcos são batidos e outros não, que é como um
+ * plano de verdade se comporta.
+ *
+ * Sem base (workspace vazio) não há de onde calibrar e não se inventa um plano:
+ * quem quiser um traça o seu nas boas-vindas ou nas configurações.
+ */
+function planoDemo(base?: BaseDados, hoje = todayISO()): Partial<Configuracao> {
+  if (!base) return {};
+
+  const porMes = faturamentoPorMes(base);
+  const mesDe = (deslocamento: number) => monthKey(addMonths(hoje, deslocamento));
+  const inicio = mesDe(-6);
+  const partida = porMes.get(mesDe(-7)) ?? 0;
+  const ultimoFechado = porMes.get(mesDe(-1)) ?? 0;
+  if (partida <= 0 || ultimoFechado <= 0) return {};
+
+  // Arredondar para o milhar deixa a meta com cara de meta — ninguém escreve
+  // "quero faturar R$ 48.317,42 por mês".
+  const meta = Math.round((ultimoFechado * 1.2) / 1000) * 1000;
+
+  return {
+    metaReceitaMensal: meta,
+    faturamentoBase: Math.round(partida),
     metaHorizonteMeses: 12,
-    planoInicio: monthKey(addMonths(todayISO(), -6)),
+    planoInicio: inicio,
   };
 }
 

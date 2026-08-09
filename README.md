@@ -127,6 +127,12 @@ Em **Relatórios › Plano**, a mesma trajetória em tabela, com situação por 
 exportação em CSV — a visão que vai para a reunião ou para a planilha de quem
 quer conferir a conta.
 
+Na base de exemplo o plano é **calibrado pelo faturamento que a própria
+demonstração produz** (parte do mês −7, mira 20% acima do último mês fechado).
+Um plano tirado do preset do segmento teria alvos abaixo do que a operação já
+entrega, e a rampa apareceria cumprida com folga em todos os meses — uma
+demonstração que não demonstra nada.
+
 ```bash
 npm run test:plano
 ```

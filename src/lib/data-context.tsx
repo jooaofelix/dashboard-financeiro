@@ -159,7 +159,7 @@ function useDadosLocais(uid: string | null) {
       // onboarding — senão limpar a base depois jogaria o usuário de volta na
       // tela de boas-vindas.
       setConfig((anterior) => ({
-        ...configuracaoPadrao(segmentoId),
+        ...configuracaoPadrao(segmentoId, base),
         empresa: anterior.empresa || configuracaoPadrao(segmentoId).empresa,
         onboardingConcluido: anterior.onboardingConcluido,
       }));
@@ -269,9 +269,10 @@ function useDadosFirestore(uid: string | null, setOcupado: (v: boolean) => void)
       if (!raiz) return;
       setOcupado(true);
       try {
+        const base = gerarBaseDemo(segmentoId);
         await apagarColecoes(raiz);
-        await gravarEmLotes(raiz, paraOperacoes(gerarBaseDemo(segmentoId)));
-        configDoc.salvar(configuracaoPadrao(segmentoId));
+        await gravarEmLotes(raiz, paraOperacoes(base));
+        configDoc.salvar(configuracaoPadrao(segmentoId, base));
       } finally {
         setOcupado(false);
       }
