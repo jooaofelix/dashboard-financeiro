@@ -99,8 +99,18 @@ teclado numérico, e cada aba termina em dois botões grandes — "Recebi agora"
 custar um formulário. "Repetir o último lançamento" reaproveita cliente, serviço
 e valor em um toque, que é o caso mais comum de quem atende em série.
 
-Todo alvo de toque da tela tem no mínimo 44px, e o atalho ⚡ fica fixo no
-cabeçalho no celular: um lançamento rápido que exige abrir o menu não é rápido.
+A ordem dos campos é **o quê, quanto, para quem** — escolher o serviço preenche
+o valor logo abaixo, e o nome do cliente, único campo que às vezes exige
+digitação, fica por último, onde o teclado o traz para a tela sozinho. Os botões
+ficam ancorados no rodapé (`sticky`, não `fixed`, para não brigar com o teclado
+virtual).
+
+Medido em quatro tamanhos reais — 360×640, 375×667, 390×844 e 430×932: nenhuma
+rolagem horizontal, nenhum alvo de toque abaixo de 44px, nenhum texto cortado, e
+o botão de salvar visível sem rolar em todos. Num Android de 360px só o campo de
+"digitar nome novo" fica abaixo da dobra; o caminho rápido (tocar num cliente
+recente) cabe inteiro na tela. O atalho ⚡ fica fixo no cabeçalho: um lançamento
+rápido que exige abrir o menu não é rápido.
 
 ## Do orçamento à meta
 

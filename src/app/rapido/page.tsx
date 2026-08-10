@@ -84,12 +84,11 @@ export default function RapidoPage() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-4">
       <header>
         <h1 className="text-xl font-semibold text-ink">Lançamento rápido</h1>
         <p className="mt-0.5 text-sm text-ink-3">
-          O essencial em poucos toques. Os detalhes ficam para depois, na tela
-          completa.
+          O essencial em poucos toques.
         </p>
       </header>
 
@@ -97,7 +96,7 @@ export default function RapidoPage() {
         <Resumo icone={Wallet} rotulo="Entrou hoje" valor={formatCompact(entrouHoje)} />
         <Resumo
           icone={CircleDollarSign}
-          rotulo="Lançados hoje"
+          rotulo="Lançados"
           valor={String(lancadosHoje)}
         />
         <Resumo
@@ -207,7 +206,7 @@ function Resumo({
   alerta?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-3 py-2.5">
+    <div className="rounded-xl border border-line bg-surface px-2.5 py-2">
       <p className="flex items-center gap-1 text-[11px] text-ink-3">
         <Icone size={12} className="shrink-0" aria-hidden />
         <span className="truncate">{rotulo}</span>
@@ -302,22 +301,29 @@ function BotoesSalvar({
   onSecundario: () => void;
   desabilitado: boolean;
 }) {
+  /**
+   * Ancorado no rodapé: num iPhone SE o conteúdo do formulário não cabe inteiro
+   * na tela, e a ação principal caía abaixo da dobra — um lançamento que exige
+   * rolar para salvar não é rápido. `sticky` (e não `fixed`) mantém o botão no
+   * fluxo, então ele não cobre nada quando a página é curta e não briga com o
+   * teclado virtual.
+   */
   return (
-    <div className="flex flex-col gap-2">
+    <div className="sticky bottom-0 -mx-4 grid grid-cols-[1.25fr_1fr] gap-2 border-t border-line bg-page px-4 py-3">
       <button
         type="button"
         onClick={onPrimario}
         disabled={desabilitado}
-        className={`${ALTURA_TOQUE} flex items-center justify-center gap-2 rounded-xl bg-brand px-4 text-[15px] font-semibold text-brand-ink transition-opacity disabled:opacity-40`}
+        className={`${ALTURA_TOQUE} flex items-center justify-center gap-1.5 rounded-xl bg-brand px-3 text-[15px] font-semibold text-brand-ink transition-opacity disabled:opacity-40`}
       >
-        <Check size={18} aria-hidden />
+        <Check size={17} className="shrink-0" aria-hidden />
         {primario}
       </button>
       <button
         type="button"
         onClick={onSecundario}
         disabled={desabilitado}
-        className={`${ALTURA_TOQUE} rounded-xl border border-line bg-surface px-4 text-[15px] font-semibold text-ink-2 transition-opacity disabled:opacity-40`}
+        className={`${ALTURA_TOQUE} rounded-xl border border-line bg-surface px-3 text-[14px] font-semibold leading-tight text-ink-2 transition-opacity disabled:opacity-40`}
       >
         {secundario}
       </button>
@@ -422,7 +428,7 @@ function FormularioReceita({
   const nomeCliente = base.clientes.find((c) => c.id === clienteId)?.nome;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3.5">
       {servicos.length > 0 && (
         <div>
           <p className="mb-1.5 text-xs font-medium text-ink-2">{rotulos.servico}</p>
@@ -438,6 +444,8 @@ function FormularioReceita({
           />
         </div>
       )}
+
+      <CampoValor valor={valor} onChange={setValor} rotulo="Valor" />
 
       <div>
         <p className="mb-1.5 text-xs font-medium text-ink-2">{rotulos.cliente}</p>
@@ -463,16 +471,6 @@ function FormularioReceita({
         />
       </div>
 
-      <CampoValor valor={valor} onChange={setValor} rotulo="Valor" />
-
-      <BotoesSalvar
-        primario="Recebi agora"
-        secundario="Lançar a receber"
-        onPrimario={() => salvar(true)}
-        onSecundario={() => salvar(false)}
-        desabilitado={!podeSalvar}
-      />
-
       {ultimo && (
         <button
           type="button"
@@ -483,6 +481,14 @@ function FormularioReceita({
           Repetir o último lançamento
         </button>
       )}
+
+      <BotoesSalvar
+        primario="Recebi agora"
+        secundario="A receber"
+        onPrimario={() => salvar(true)}
+        onSecundario={() => salvar(false)}
+        desabilitado={!podeSalvar}
+      />
     </div>
   );
 }
@@ -536,7 +542,7 @@ function FormularioDespesa({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3.5">
       <div>
         <p className="mb-1.5 text-xs font-medium text-ink-2">Categoria</p>
         <Chips
@@ -545,6 +551,8 @@ function FormularioDespesa({
           onEscolher={(c) => setCategoria(c.id)}
         />
       </div>
+
+      <CampoValor valor={valor} onChange={setValor} rotulo="Valor" />
 
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-ink-2">Descrição (opcional)</span>
@@ -557,11 +565,9 @@ function FormularioDespesa({
         />
       </label>
 
-      <CampoValor valor={valor} onChange={setValor} rotulo="Valor" />
-
       <BotoesSalvar
         primario="Paguei agora"
-        secundario="Lançar a pagar"
+        secundario="A pagar"
         onPrimario={() => salvar(true)}
         onSecundario={() => salvar(false)}
         desabilitado={!podeSalvar}
