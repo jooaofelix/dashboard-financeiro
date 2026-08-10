@@ -17,6 +17,7 @@ import {
   Users,
   Waves,
   X,
+  Zap,
 } from "lucide-react";
 import { useData } from "@/lib/data-context";
 import { useAuth } from "@/lib/auth-context";
@@ -39,7 +40,12 @@ function useNavegacao(): { grupo: string; itens: ItemNav[] }[] {
   return [
     {
       grupo: "Visão geral",
-      itens: [{ href: "/", label: "Dashboard", icon: LayoutDashboard }],
+      itens: [
+        // Primeiro item de propósito: no celular, lançar é o que se faz todo
+        // dia; analisar é o que se faz de vez em quando, sentado.
+        { href: "/rapido", label: "Lançamento rápido", icon: Zap },
+        { href: "/", label: "Dashboard", icon: LayoutDashboard },
+      ],
     },
     {
       grupo: "Operação",
@@ -220,6 +226,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [menuAberto, setMenuAberto] = useState(false);
 
   const naEntrada = normalizarRota(pathname) === ROTA_ENTRADA;
+  const emRotaRapida = normalizarRota(pathname) === "/rapido";
 
   // Guarda de rota: sem sessão, nada das telas internas é montado.
   useEffect(() => {
@@ -303,12 +310,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            {/* Atalho sempre visível no celular: o lançamento rápido perde a
+                razão de existir se custar abrir o menu para chegar nele. */}
+            <Link
+              href="/rapido"
+              aria-label="Lançamento rápido"
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-soft text-brand lg:hidden"
+            >
+              <Zap size={18} aria-hidden />
+            </Link>
             {ocupado && (
               <span className="hidden text-xs text-ink-3 sm:inline" role="status">
                 Sincronizando…
               </span>
             )}
-            <PeriodPicker />
+            {/* O lançamento rápido é sempre sobre hoje: um seletor de período
+                ali só ocuparia espaço e sugeriria um recorte que não existe. */}
+            {!emRotaRapida && <PeriodPicker />}
             <ThemeToggle />
           </div>
         </header>

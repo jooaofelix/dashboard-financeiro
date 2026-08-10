@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   DocumentData,
-  addDoc,
   collection,
   deleteDoc,
   doc,
   onSnapshot,
+  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -62,8 +62,13 @@ export function useFirestoreCollection<T extends { id: string }>(
   const crud = useMemo(
     () => ({
       add: (item: Omit<T, "id">) => {
-        if (!db || !caminho) return;
-        void addDoc(collection(db, caminho), semUndefined(item));
+        if (!db || !caminho) return "";
+        // A referência é criada antes da gravação: assim o id existe de imediato
+        // para quem precisa referenciar o registro no mesmo gesto, sem esperar
+        // a ida ao servidor.
+        const referencia = doc(collection(db, caminho));
+        void setDoc(referencia, semUndefined(item));
+        return referencia.id;
       },
       update: (id: string, patch: Partial<T>) => {
         if (!db || !caminho) return;

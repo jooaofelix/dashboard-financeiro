@@ -51,7 +51,12 @@ export function caminhoWorkspace(uid: string) {
 }
 
 interface Crud<T extends { id: string }> {
-  add: (item: Omit<T, "id">) => void;
+  /**
+   * Devolve o id gerado. Sem isso, quem cria um registro e precisa referenciá-lo
+   * no mesmo gesto — o lançamento rápido cria o cliente e o cobra na sequência —
+   * não teria como ligar os dois, e o vínculo nasceria quebrado.
+   */
+  add: (item: Omit<T, "id">) => string;
   update: (id: string, patch: Partial<T>) => void;
   remove: (id: string) => void;
 }
@@ -60,7 +65,7 @@ interface Crud<T extends { id: string }> {
 const VAZIO: never[] = [];
 
 const CRUD_INERTE: Crud<{ id: string }> = {
-  add: () => {},
+  add: () => "",
   update: () => {},
   remove: () => {},
 };
@@ -106,7 +111,11 @@ function useColecaoLocal<T extends { id: string }>(chave: string, inicial: T[]) 
 
   const crud = useMemo<Crud<T>>(
     () => ({
-      add: (item) => setItens((prev) => [...prev, { ...item, id: gerarId() } as T]),
+      add: (item) => {
+        const id = gerarId();
+        setItens((prev) => [...prev, { ...item, id } as T]);
+        return id;
+      },
       update: (id, patch) =>
         setItens((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i))),
       remove: (id) => setItens((prev) => prev.filter((i) => i.id !== id)),

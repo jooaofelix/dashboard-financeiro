@@ -53,6 +53,9 @@ as sugestões.
   negócio e nome, a operação de hoje (faturamento, custo fixo, caixa, impostos),
   a meta com prazo — e a revisão, onde se escolhe começar com dados de exemplo
   ou vazio. Ver ["Do orçamento à meta"](#do-orçamento-à-meta).
+- **Lançamento rápido** — a tela do celular: lançar o que acabou de acontecer,
+  registrar uma despesa ou dar baixa num recebimento em poucos toques. Ver
+  ["A tela do celular"](#a-tela-do-celular).
 - **Dashboard** — alertas acionáveis, 8 indicadores com variação contra o período
   anterior, medidor de meta com ponto de equilíbrio, receita × despesa × resultado,
   composição das despesas, aging de recebíveis e concentração de clientes.
@@ -72,6 +75,32 @@ as sugestões.
   exportáveis em CSV.
 - **Configurações** — segmento, dados da empresa, parâmetros financeiros, catálogo
   de serviços, equipe e gestão da base.
+
+## A tela do celular
+
+O resto do sistema é feito para **entender** o negócio. `/rapido` é feita para
+**alimentá-lo** em segundos, de pé, entre um atendimento e outro — e por isso
+quebra de propósito três regras das outras telas:
+
+- **não tem filtro de período** (o cabeçalho até esconde o seletor): o que se
+  lança ali é sempre hoje;
+- **não tem campo opcional** — vencimento, desconto, forma de pagamento,
+  profissional e observação ficam no padrão e podem ser ajustados depois, na
+  tela completa, num momento em que se está sentado;
+- **cliente novo nasce ali mesmo**, digitando o nome. Obrigar a cadastrar antes
+  de cobrar é o tipo de burocracia que faz o lançamento não acontecer — e um
+  lançamento que não acontece some do faturamento.
+
+São três abas: **novo atendimento** (o nome varia por segmento), **nova
+despesa** e **receber**, esta com o número de pendências no próprio rótulo.
+Escolher o serviço já preenche o preço de tabela, o campo de valor abre o
+teclado numérico, e cada aba termina em dois botões grandes — "Recebi agora" e
+"Lançar a receber" — porque a diferença entre competência e caixa não pode
+custar um formulário. "Repetir o último lançamento" reaproveita cliente, serviço
+e valor em um toque, que é o caso mais comum de quem atende em série.
+
+Todo alvo de toque da tela tem no mínimo 44px, e o atalho ⚡ fica fixo no
+cabeçalho no celular: um lançamento rápido que exige abrir o menu não é rápido.
 
 ## Do orçamento à meta
 
