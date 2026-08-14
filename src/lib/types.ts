@@ -109,6 +109,13 @@ export interface Configuracao {
   /** Janela do alerta "vence em breve". */
   diasAlertaVencimento: number;
   /**
+   * Chave Pix do recebedor e cidade — os dois campos que o padrão do Banco
+   * Central exige para montar o código copia e cola. Sem eles o app não oferece
+   * Pix: um código que o banco recusa é pior do que nenhum.
+   */
+  chavePix?: string;
+  cidade?: string;
+  /**
    * Plano de crescimento: de onde o negócio partiu e em quanto tempo pretende
    * chegar à `metaReceitaMensal`. Opcional — workspaces criados antes do plano
    * existir continuam válidos, e quem não quiser traçar meta segue sem ela.

@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   CheckCircle2,
   Download,
+  MessageCircle,
   Pencil,
   Plus,
   ReceiptText,
@@ -15,6 +16,7 @@ import { useBase, useData } from "@/lib/data-context";
 import { usePeriodo } from "@/lib/periodo-context";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
+import ModalCobranca from "@/components/ModalCobranca";
 import {
   Button,
   EmptyState,
@@ -68,7 +70,7 @@ const formularioVazio = () => ({
 
 export default function ReceitasPage() {
   const base = useBase();
-  const { segmento, atendimentosCrud } = useData();
+  const { segmento, config, atendimentosCrud } = useData();
   const { periodo } = usePeriodo();
   const rotulos = segmento.labels;
 
@@ -77,6 +79,7 @@ export default function ReceitasPage() {
   const [filtroCliente, setFiltroCliente] = useState("todos");
   const [filtroProfissional, setFiltroProfissional] = useState("todos");
   const [modalAberto, setModalAberto] = useState(false);
+  const [cobrando, setCobrando] = useState<Atendimento | null>(null);
   const [editando, setEditando] = useState<Atendimento | null>(null);
   const [form, setForm] = useState(formularioVazio);
 
@@ -465,6 +468,16 @@ export default function ReceitasPage() {
                         <div className="flex items-center justify-end gap-0.5">
                           {a.status !== "pago" && a.status !== "cancelado" && (
                             <button
+                              onClick={() => setCobrando(a)}
+                              title="Cobrar"
+                              aria-label={`Cobrar ${clientePorId.get(a.clienteId)?.nome ?? ""}`}
+                              className="rounded-md p-1.5 text-ink-3 hover:bg-brand-soft hover:text-brand"
+                            >
+                              <MessageCircle size={16} />
+                            </button>
+                          )}
+                          {a.status !== "pago" && a.status !== "cancelado" && (
+                            <button
                               onClick={() => marcarComoPago(a)}
                               title="Marcar como recebido"
                               aria-label={`Marcar como recebido o lançamento de ${clientePorId.get(a.clienteId)?.nome ?? ""}`}
@@ -770,6 +783,19 @@ export default function ReceitasPage() {
           </div>
         </form>
       </Modal>
+
+      {cobrando && (
+        <ModalCobranca
+          aberto
+          onFechar={() => setCobrando(null)}
+          config={config}
+          cliente={clientePorId.get(cobrando.clienteId)}
+          valor={valorLiquido(cobrando)}
+          vencimento={cobrando.vencimento}
+          referencia={base.servicos.find((s) => s.id === cobrando.servicoId)?.nome}
+          identificador={cobrando.id}
+        />
+      )}
     </div>
   );
 }

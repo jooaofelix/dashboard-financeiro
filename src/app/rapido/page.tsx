@@ -8,12 +8,14 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Clock,
+  MessageCircle,
   RotateCcw,
   Wallet,
 } from "lucide-react";
 import { useBase, useData } from "@/lib/data-context";
 import { estaEmAberto, valorLiquido } from "@/lib/finance";
 import { formatCompact, formatCurrency, formatDateShort, todayISO } from "@/lib/format";
+import ModalCobranca from "@/components/ModalCobranca";
 import { Atendimento } from "@/lib/types";
 
 /**
@@ -42,11 +44,12 @@ const ALTURA_TOQUE = "h-14";
 
 export default function RapidoPage() {
   const base = useBase();
-  const { segmento, atendimentosCrud, clientesCrud, transacoesCrud } = useData();
+  const { segmento, config, atendimentosCrud, clientesCrud, transacoesCrud } = useData();
   const rotulos = segmento.labels;
   const hoje = todayISO();
 
   const [aba, setAba] = useState<Aba>("receita");
+  const [cobrando, setCobrando] = useState<Atendimento | null>(null);
   const [confirmacao, setConfirmacao] = useState<string | null>(null);
 
   function confirmar(mensagem: string) {
@@ -174,10 +177,24 @@ export default function RapidoPage() {
           base={base}
           hoje={hoje}
           rotuloCliente={rotulos.cliente}
+          onCobrar={setCobrando}
           onReceber={(a) => {
             atendimentosCrud.update(a.id, { status: "pago", pagoEm: hoje });
             confirmar(`${formatCurrency(valorLiquido(a))} recebido.`);
           }}
+        />
+      )}
+
+      {cobrando && (
+        <ModalCobranca
+          aberto
+          onFechar={() => setCobrando(null)}
+          config={config}
+          cliente={base.clientes.find((c) => c.id === cobrando.clienteId)}
+          valor={valorLiquido(cobrando)}
+          vencimento={cobrando.vencimento}
+          referencia={base.servicos.find((s) => s.id === cobrando.servicoId)?.nome}
+          identificador={cobrando.id}
         />
       )}
 
@@ -584,12 +601,14 @@ function ListaAReceber({
   hoje,
   rotuloCliente,
   onReceber,
+  onCobrar,
 }: {
   itens: Atendimento[];
   base: ReturnType<typeof useBase>;
   hoje: string;
   rotuloCliente: string;
   onReceber: (a: Atendimento) => void;
+  onCobrar: (a: Atendimento) => void;
 }) {
   const nomePorId = useMemo(
     () => new Map(base.clientes.map((c) => [c.id, c.nome])),
@@ -623,6 +642,16 @@ function ListaAReceber({
                 {atrasado ? "venceu" : "vence"} {formatDateShort(a.vencimento)}
               </p>
             </div>
+            {/* Cobrar e dar baixa são gestos diferentes e ambos de um toque:
+                um manda a mensagem, o outro encerra a pendência. */}
+            <button
+              type="button"
+              onClick={() => onCobrar(a)}
+              aria-label={`Cobrar ${nomePorId.get(a.clienteId) ?? rotuloCliente}`}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink-2"
+            >
+              <MessageCircle size={18} aria-hidden />
+            </button>
             <button
               type="button"
               onClick={() => onReceber(a)}

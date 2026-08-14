@@ -11,13 +11,16 @@
     "preview": "npm run build && npx --yes wrangler dev",
     "deploy": "npm run build && npx --yes wrangler deploy",
     "test:agenda": "node tests/agenda.test.mjs",
-    "test:plano": "node tests/plano.test.mjs && node tests/meta-do-mes.test.mjs"
+    "test:plano": "node tests/plano.test.mjs && node tests/meta-do-mes.test.mjs",
+    "test:cobranca": "node tests/pix.test.mjs && node tests/cobranca.test.mjs"
   },
   "dependencies": {
+    "@types/qrcode": "^1.5.6",
     "date-fns": "^4.4.0",
     "firebase": "^12.17.1",
     "lucide-react": "^1.26.0",
     "next": "16.2.11",
+    "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.10.0"

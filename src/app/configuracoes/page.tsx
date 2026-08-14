@@ -44,6 +44,7 @@ import {
   planoValido,
   trajetoria,
 } from "@/lib/plano";
+import { detectarTipoChave, gerarPixCopiaECola } from "@/lib/pix";
 import { Configuracao, Profissional, Servico } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { usePeriodo } from "@/lib/periodo-context";
@@ -193,6 +194,8 @@ export default function ConfiguracoesPage() {
           </div>
         </Panel>
       </div>
+
+      <RecebimentoPix config={config} salvarConfig={salvarConfig} />
 
       <PlanoDeCrescimento config={config} salvarConfig={salvarConfig} />
 
@@ -979,6 +982,103 @@ function PlanoDeCrescimento({
         <p className="mt-4 rounded-xl border border-line bg-raised px-4 py-3 text-sm leading-relaxed text-ink-2">
           Sem prazo definido, a meta mensal continua valendo no medidor do painel —
           mas não há trajetória para acompanhar. Informe um prazo para criar a rampa.
+        </p>
+      )}
+    </Panel>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A chave Pix do recebedor.
+ *
+ * Fica aqui, e não numa integração bancária, porque o código copia e cola é
+ * gerado no próprio navegador: o app não precisa — e não pede — credencial de
+ * banco nenhuma. A prévia ao lado existe para o erro aparecer agora, e não na
+ * mão do cliente, onde um código inválido é recusado sem explicação.
+ */
+function RecebimentoPix({
+  config,
+  salvarConfig,
+}: {
+  config: Configuracao;
+  salvarConfig: (patch: Partial<Configuracao>) => void;
+}) {
+  const chave = config.chavePix ?? "";
+  const tipo = detectarTipoChave(chave);
+  const NOMES: Record<string, string> = {
+    cpf: "CPF",
+    cnpj: "CNPJ",
+    email: "E-mail",
+    telefone: "Telefone",
+    aleatoria: "Chave aleatória",
+  };
+
+  const codigo =
+    tipo && config.empresa
+      ? (() => {
+          try {
+            return gerarPixCopiaECola({
+              chave,
+              nome: config.empresa,
+              cidade: config.cidade ?? "",
+              valor: 100,
+              identificador: "EXEMPLO",
+            });
+          } catch {
+            return null;
+          }
+        })()
+      : null;
+
+  return (
+    <Panel
+      titulo="Recebimento por Pix"
+      descricao="Gera o copia e cola e o QR de cada cobrança, aqui no navegador — sem integração bancária."
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field
+          label="Sua chave Pix"
+          hint="CPF, CNPJ, e-mail, telefone ou chave aleatória. O tipo é reconhecido sozinho."
+        >
+          <Input
+            value={chave}
+            onChange={(e) => salvarConfig({ chavePix: e.target.value })}
+            placeholder="000.000.000-00"
+          />
+        </Field>
+        <Field label="Cidade do recebedor" hint="Exigida pelo padrão do Banco Central. Até 15 caracteres.">
+          <Input
+            value={config.cidade ?? ""}
+            onChange={(e) => salvarConfig({ cidade: e.target.value })}
+            placeholder="São Paulo"
+          />
+        </Field>
+      </div>
+
+      {chave === "" ? (
+        <p className="mt-3 rounded-lg bg-raised px-3 py-2.5 text-xs leading-relaxed text-ink-2">
+          Sem chave cadastrada, a cobrança sai só com a mensagem — o cliente
+          recebe o valor e o vencimento, mas precisa pedir os dados de pagamento.
+        </p>
+      ) : tipo ? (
+        <div className="mt-3 flex flex-col gap-2 rounded-lg bg-raised px-3 py-2.5">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-good-ink">
+            <CheckCircle2 size={14} className="shrink-0" aria-hidden />
+            Chave reconhecida como {NOMES[tipo]}.
+          </p>
+          {codigo && (
+            <p className="break-all font-mono text-[10px] leading-relaxed text-ink-3">
+              Prévia de uma cobrança de {formatCurrency(100)}: {codigo}
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="mt-3 flex items-start gap-2 rounded-lg bg-crit-soft px-3 py-2.5 text-xs leading-relaxed text-crit-ink">
+          <AlertTriangle size={14} className="mt-px shrink-0" aria-hidden />
+          Esta chave não tem o formato de nenhum tipo aceito pelo Pix. Confira
+          antes de cobrar — o aplicativo do banco recusa o código sem dizer por quê.
         </p>
       )}
     </Panel>
