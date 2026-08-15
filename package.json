@@ -12,7 +12,8 @@
     "deploy": "npm run build && npx --yes wrangler deploy",
     "test:agenda": "node tests/agenda.test.mjs",
     "test:plano": "node tests/plano.test.mjs && node tests/meta-do-mes.test.mjs",
-    "test:cobranca": "node tests/pix.test.mjs && node tests/cobranca.test.mjs"
+    "test:cobranca": "node tests/pix.test.mjs && node tests/cobranca.test.mjs",
+    "test:pessoal": "node tests/pessoal.test.mjs"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",

@@ -98,6 +98,10 @@ export interface ResumoFinanceiro {
   custosDiretos: number;
   despesasFixas: number;
   despesasVariaveis: number;
+  /** Saídas marcadas como pessoais — retirada, não custo do negócio. */
+  retiradasPessoais: number;
+  /** Quanto do que saiu do caixa foi gasto pessoal, em %. */
+  misturaPercent: number;
   despesasTotais: number;
   impostos: number;
   margemContribuicao: number;
@@ -169,9 +173,20 @@ export function calcularResumo(
     return servico?.custoDireto ?? 0;
   });
 
-  const despesasPeriodo = base.transacoes.filter(
+  const saidasPeriodo = base.transacoes.filter(
     (t) => t.tipo === "despesa" && dentroDoPeriodo(t.data, periodo)
   );
+  /**
+   * Gasto pessoal pago pela empresa não é despesa do negócio: é retirada. Somá-lo
+   * ao custo faria o resultado operacional parecer pior do que é e contaminaria
+   * margem, ponto de equilíbrio e DRE. Sai do resultado, mas **não some** — o
+   * dinheiro deixou o caixa, e é isso que a linha de retiradas mostra.
+   */
+  const retiradasPessoais = soma(
+    saidasPeriodo.filter((t) => t.pessoal === true),
+    (t) => t.valor
+  );
+  const despesasPeriodo = saidasPeriodo.filter((t) => t.pessoal !== true);
   const despesasFixas = soma(
     despesasPeriodo.filter((t) => t.natureza === "fixo"),
     (t) => t.valor
@@ -227,6 +242,9 @@ export function calcularResumo(
     custosDiretos,
     despesasFixas,
     despesasVariaveis,
+    retiradasPessoais,
+    misturaPercent:
+      divisao(retiradasPessoais, despesasTotais + custosDiretos + retiradasPessoais) * 100,
     despesasTotais,
     impostos,
     margemContribuicao,
@@ -409,6 +427,28 @@ export function montarDRE(
     percentual: r.margemLiquidaPercent,
     destaque: true,
   });
+
+  /**
+   * Retirada pessoal entra **depois** do resultado, nunca dentro dele: o gasto
+   * do dono não é custo do negócio, mas saiu do mesmo caixa. Somar seria mentir
+   * sobre a operação; omitir seria mentir sobre o dinheiro.
+   */
+  if (r.retiradasPessoais > 0) {
+    linhas.push(
+      {
+        rotulo: "(–) Retiradas e gastos pessoais",
+        valor: -r.retiradasPessoais,
+        tipo: "deducao",
+        percentual: -pct(r.retiradasPessoais),
+      },
+      {
+        rotulo: "Sobra depois das retiradas",
+        valor: r.lucroLiquido - r.retiradasPessoais,
+        tipo: "total",
+        percentual: pct(r.lucroLiquido - r.retiradasPessoais),
+      }
+    );
+  }
 
   return linhas;
 }
@@ -729,7 +769,7 @@ export function agruparDespesasPorCategoria(
 ): GrupoDespesa[] {
   const mapa = new Map<string, GrupoDespesa>();
   for (const t of base.transacoes) {
-    if (t.tipo !== "despesa" || !dentroDoPeriodo(t.data, periodo)) continue;
+    if (t.tipo !== "despesa" || t.pessoal || !dentroDoPeriodo(t.data, periodo)) continue;
     const grupo = mapa.get(t.categoria) ?? {
       categoria: t.categoria,
       total: 0,
@@ -750,7 +790,7 @@ export function agruparDespesasPorCentroCusto(
 ): { centroCusto: string; total: number }[] {
   const mapa = new Map<string, number>();
   for (const t of base.transacoes) {
-    if (t.tipo !== "despesa" || !dentroDoPeriodo(t.data, periodo)) continue;
+    if (t.tipo !== "despesa" || t.pessoal || !dentroDoPeriodo(t.data, periodo)) continue;
     const chave = t.centroCusto || "Não alocado";
     mapa.set(chave, (mapa.get(chave) ?? 0) + t.valor);
   }
@@ -944,6 +984,22 @@ export function gerarAlertas(
         });
       }
     }
+  }
+
+  /**
+   * A mistura entre o dinheiro da empresa e o pessoal é a falha de controle mais
+   * comum entre pequenos negócios — e a mais silenciosa, porque cada gasto
+   * isolado parece pequeno. O alerta só aparece quando o hábito já pesa: um
+   * almoço pago pela empresa não precisa virar alarme.
+   */
+  if (resumoMes.retiradasPessoais > 0 && resumoMes.misturaPercent >= 20) {
+    alertas.push({
+      id: "mistura-pessoal",
+      severidade: "warning",
+      titulo: "Gasto pessoal pesando no caixa da empresa",
+      detalhe: `${moeda(resumoMes.retiradasPessoais)} saíram como pessoal neste mês — ${resumoMes.misturaPercent.toFixed(0)}% de tudo que o caixa pagou. Um pró-labore fixo separa as duas contas.`,
+      href: "/contas",
+    });
   }
 
   // No começo do mês o custo fixo inteiro já está lançado e a receita mal

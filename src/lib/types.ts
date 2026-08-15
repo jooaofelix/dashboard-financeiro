@@ -93,6 +93,17 @@ export interface Transacao {
   pagoEm?: string;
   recorrente: boolean;
   formaPagamento?: string;
+  /**
+   * Saída de dinheiro da empresa que **não é da empresa**: mercado, escola dos
+   * filhos, o cartão pessoal pago com o caixa do negócio.
+   *
+   * O levantamento do Sebrae que motiva este campo diz que 61% dos
+   * empreendedores pagam contas pessoais pela conta do negócio. Ignorar isso
+   * não faz o dinheiro voltar — só faz o resultado do mês parecer pior do que
+   * é, com "despesas" que na verdade foram retirada. Marcado como pessoal, o
+   * lançamento sai do resultado operacional e entra na conta de retiradas.
+   */
+  pessoal?: boolean;
 }
 
 export interface Configuracao {

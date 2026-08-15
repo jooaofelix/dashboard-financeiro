@@ -529,6 +529,7 @@ function FormularioDespesa({
   const [categoria, setCategoria] = useState(categorias[0] ?? "Geral");
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
+  const [pessoal, setPessoal] = useState(false);
 
   const podeSalvar = paraNumero(valor) > 0;
 
@@ -543,6 +544,7 @@ function FormularioDespesa({
         categoria,
         centroCusto: centroPadrao || undefined,
         natureza: "variavel",
+        pessoal,
         valor: paraNumero(valor),
         data: hoje,
         vencimento: hoje,
@@ -551,8 +553,10 @@ function FormularioDespesa({
         recorrente: false,
       },
       pago
-        ? `${formatCurrency(paraNumero(valor))} pago — ${categoria}.`
-        : `Despesa lançada a pagar — ${categoria}.`
+        ? `${formatCurrency(paraNumero(valor))} ${pessoal ? "de gasto pessoal registrado" : "pago"} — ${
+            pessoal ? "sai do resultado da operação" : categoria
+          }.`
+        : `Lançado a pagar — ${pessoal ? "gasto pessoal" : categoria}.`
     );
     setDescricao("");
     setValor("");
@@ -570,6 +574,29 @@ function FormularioDespesa({
       </div>
 
       <CampoValor valor={valor} onChange={setValor} rotulo="Valor" />
+
+      {/* Um toque para dizer "isso não é da empresa" — a pergunta precisa
+          caber no mesmo gesto do lançamento, senão ninguém responde. */}
+      <button
+        type="button"
+        onClick={() => setPessoal((v) => !v)}
+        aria-pressed={pessoal}
+        className={`flex min-h-11 items-center gap-2.5 rounded-xl border px-3.5 text-left text-sm font-medium transition-colors ${
+          pessoal
+            ? "border-warn bg-warn-soft text-warn-ink"
+            : "border-line bg-surface text-ink-2"
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+            pessoal ? "border-warn-ink bg-warn-ink text-white" : "border-line-strong"
+          }`}
+        >
+          {pessoal && <Check size={13} strokeWidth={3} />}
+        </span>
+        Gasto pessoal, não da empresa
+      </button>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-ink-2">Descrição (opcional)</span>

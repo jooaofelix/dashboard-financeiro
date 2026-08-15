@@ -82,6 +82,7 @@ const formularioVazio = () => ({
   vencimento: todayISO(),
   pago: false,
   recorrente: false,
+  pessoal: false,
   formaPagamento: "",
 });
 
@@ -195,6 +196,7 @@ export default function ContasPage() {
       centroCusto: t.centroCusto ?? "",
       contraparte: t.contraparte ?? "",
       natureza: t.natureza,
+      pessoal: t.pessoal ?? false,
       valor: String(t.valor),
       data: t.data,
       vencimento: t.vencimento,
@@ -215,6 +217,7 @@ export default function ContasPage() {
       centroCusto: form.centroCusto.trim() || undefined,
       contraparte: form.contraparte.trim() || undefined,
       natureza: form.natureza,
+      pessoal: form.pessoal,
       valor: Number(form.valor),
       data: form.data,
       vencimento: form.vencimento || form.data,
@@ -438,6 +441,7 @@ export default function ContasPage() {
                           {" · "}
                           {t.natureza === "fixo" ? "custo fixo" : "variável"}
                           {t.recorrente && " · recorrente"}
+                          {t.pessoal && " · pessoal"}
                           {t.contraparte && ` · ${t.contraparte}`}
                         </p>
                       </Td>
@@ -679,7 +683,21 @@ export default function ContasPage() {
                 setForm({ ...form, recorrente: e.target.checked })
               }
             />
+            {form.tipo === "despesa" && (
+              <Checkbox
+                label="Gasto pessoal pago pela empresa"
+                checked={form.pessoal}
+                onChange={(e) => setForm({ ...form, pessoal: e.target.checked })}
+              />
+            )}
           </div>
+          {form.pessoal && form.tipo === "despesa" && (
+            <p className="rounded-lg bg-raised px-3 py-2.5 text-xs leading-relaxed text-ink-2">
+              Sai do resultado da operação e entra como <strong>retirada</strong>:
+              o dinheiro deixou o caixa, mas o custo não é do negócio. É o que
+              separa o quanto a empresa gasta do quanto você tira dela.
+            </p>
+          )}
 
           <div className="flex justify-end gap-2 border-t border-line pt-4">
             <Button type="button" onClick={() => setModalAberto(false)}>

@@ -76,6 +76,62 @@ as sugestões.
 - **Configurações** — segmento, dados da empresa, parâmetros financeiros, catálogo
   de serviços, equipe e gestão da base.
 
+## Dinheiro da empresa × dinheiro pessoal
+
+O levantamento do Sebrae que motiva este recorte diz que **61% dos
+empreendedores pagam contas pessoais pela conta do negócio**. Fingir que isso
+não acontece não faz o dinheiro voltar — só faz o resultado do mês parecer pior
+do que é, com "despesas" que na verdade foram retirada.
+
+Qualquer saída pode ser marcada como **gasto pessoal** — um toque no lançamento
+rápido, uma caixa no formulário completo. O efeito:
+
+| Onde | O que acontece |
+|---|---|
+| Resultado, margem e ponto de equilíbrio | **não** são afetados — não é custo do negócio |
+| Caixa e fluxo projetado | contam normalmente — o dinheiro saiu |
+| DRE | linha "(–) Retiradas e gastos pessoais" **depois** do resultado, com a sobra |
+| "Para onde vai o dinheiro" | ignora — é um gráfico da operação |
+| Painel | alerta quando a mistura passa de 20% do que o caixa pagou |
+
+Somar seria mentir sobre a operação; omitir seria mentir sobre o dinheiro. Por
+isso a retirada entra depois do resultado, nunca dentro dele. O alerta só
+aparece quando o hábito já pesa — um almoço pago pela empresa não vira alarme —
+e aponta a saída: um pró-labore fixo separa as duas contas.
+
+```bash
+npm run test:pessoal
+```
+
+## Recebimento por Pix e cobrança
+
+O **Pix copia e cola** de cada cobrança é montado no próprio navegador, no
+padrão EMV MPM do Banco Central, a partir da chave que o dono cadastra em
+**Configurações › Recebimento por Pix**. Não há integração bancária, não há
+servidor no caminho e o app não pede credencial de banco a ninguém.
+
+A contrapartida é dita na própria tela: **a BASE não sabe quando o dinheiro
+cai**. A baixa continua sendo um gesto de quem recebeu — é a única forma honesta
+de oferecer Pix sem acesso à conta.
+
+O **lembrete de cobrança** escreve a mensagem com valor, vencimento e o código,
+e abre o WhatsApp já preenchido; quem aperta enviar é a pessoa. Disparo
+automático fica de fora de propósito: exigiria servidor e número verificado, e o
+risco é cobrar o cliente errado sem ninguém ver. O tom sai da data — quem ainda
+tem prazo recebe lembrete, quem venceu recebe cobrança —, porque errar isso
+custa relação e ninguém vai classificar trinta clientes um a um.
+
+Cobrar está no lançamento rápido, ao lado de "Recebi", e em cada linha do
+faturamento.
+
+```bash
+npm run test:cobranca
+```
+
+Verifica o CRC-16/CCITT-FALSE contra o vetor de referência da especificação,
+a estrutura dos campos aninhados, os limites de nome e cidade, a normalização
+de cada tipo de chave e o texto dos lembretes.
+
 ## A tela do celular
 
 O resto do sistema é feito para **entender** o negócio. `/rapido` é feita para
@@ -111,6 +167,47 @@ o botão de salvar visível sem rolar em todos. Num Android de 360px só o campo
 "digitar nome novo" fica abaixo da dobra; o caminho rápido (tocar num cliente
 recente) cabe inteiro na tela. O atalho ⚡ fica fixo no cabeçalho: um lançamento
 rápido que exige abrir o menu não é rápido.
+
+## Receber e cobrar
+
+O **Pix copia e cola** é gerado no próprio navegador, a partir da chave que o
+dono cadastra em *Configurações › Recebimento por Pix* — padrão EMV MPM do
+Banco Central, com QR e código, sem integração bancária e sem pedir credencial
+de banco a ninguém. A contrapartida é dita na tela: **o app não sabe quando o
+dinheiro cai**, então a baixa continua sendo um gesto de quem recebeu.
+
+O **lembrete de cobrança** escreve a mensagem — valor, vencimento e o Pix — e
+abre o WhatsApp já preenchido. O tom sai da data, não de uma escolha: quem
+ainda tem prazo recebe lembrete, quem venceu recebe cobrança. Disparo
+automático fica de fora de propósito: mandar mensagem em nome de alguém exige
+servidor e número verificado, e o risco é cobrar o cliente errado sem ninguém
+ver. Cobrar está a um toque no lançamento rápido e a um clique em cada linha do
+faturamento.
+
+```bash
+npm run test:cobranca
+```
+
+## Dinheiro da empresa × dinheiro pessoal
+
+O Sebrae aponta que **61% dos empreendedores pagam contas pessoais pela conta do
+negócio**. Ignorar isso não faz o dinheiro voltar — só faz o resultado do mês
+parecer pior do que é, com "despesas" que na verdade foram retirada.
+
+Qualquer despesa pode ser marcada como **gasto pessoal**, num toque no
+lançamento rápido ou numa caixa no formulário completo. O que muda:
+
+- sai do resultado operacional, da margem, do ponto de equilíbrio e do gráfico
+  de para onde vai o dinheiro — **não é custo do negócio**;
+- entra na DRE **depois** do resultado, como "(–) Retiradas e gastos pessoais",
+  seguida da sobra — o dinheiro saiu do mesmo caixa, e omitir isso seria mentir
+  sobre o caixa;
+- quando passa de 20% de tudo que o caixa pagou no mês, vira alerta no painel,
+  com o caminho de saída: um pró-labore fixo separa as duas contas.
+
+```bash
+node tests/pessoal.test.mjs
+```
 
 ## Do orçamento à meta
 
