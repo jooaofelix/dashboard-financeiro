@@ -209,6 +209,13 @@ function IndicadorArmazenamento() {
 const ROTA_ENTRADA = "/entrar";
 
 /**
+ * Rotas com superfície própria, fora do chrome do app e fora da guarda de
+ * sessão. A apresentação precisa abrir para quem ainda não tem conta — é
+ * exatamente o público dela.
+ */
+const ROTAS_PUBLICAS = [ROTA_ENTRADA, "/como-funciona"];
+
+/**
  * Normaliza a barra final antes de comparar rotas. Hosts estáticos servem a
  * mesma página como `/entrar` ou `/entrar/` conforme a configuração, e uma
  * comparação literal deixaria a guarda de rota sem reconhecer a tela de entrada
@@ -225,15 +232,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [menuAberto, setMenuAberto] = useState(false);
 
-  const naEntrada = normalizarRota(pathname) === ROTA_ENTRADA;
-  const emRotaRapida = normalizarRota(pathname) === "/rapido";
+  const rota = normalizarRota(pathname);
+  const naEntrada = rota === ROTA_ENTRADA;
+  const emRotaPublica = ROTAS_PUBLICAS.includes(rota);
+  const emRotaRapida = rota === "/rapido";
 
   // Guarda de rota: sem sessão, nada das telas internas é montado.
   useEffect(() => {
     if (carregando) return;
-    if (!autenticado && !naEntrada) router.replace(ROTA_ENTRADA);
+    if (!autenticado && !emRotaPublica) router.replace(ROTA_ENTRADA);
     if (autenticado && naEntrada) router.replace("/");
-  }, [autenticado, carregando, naEntrada, router]);
+  }, [autenticado, carregando, emRotaPublica, naEntrada, router]);
 
   useEffect(() => {
     if (!menuAberto) return;
@@ -244,8 +253,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("keydown", aoTeclar);
   }, [menuAberto]);
 
-  // A tela de entrada tem a própria superfície — nada do chrome do app.
-  if (naEntrada) return <>{children}</>;
+  // Entrada e apresentação têm superfície própria — nada do chrome do app.
+  if (emRotaPublica) return <>{children}</>;
 
   if (carregando || !autenticado) return <TelaDeEspera />;
 

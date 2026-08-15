@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, HardDrive, Info, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -288,6 +289,15 @@ export default function EntrarPage() {
             {textos.link}
           </button>
         </p>
+
+        {/* Quem chegou sem saber o que é isto precisa de uma saída antes do
+            formulário, não depois de criar conta. */}
+        <Link
+          href="/como-funciona"
+          className="mt-3 text-center text-sm font-medium text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink"
+        >
+          Veja como funciona antes de entrar
+        </Link>
 
         {modoLocal && (
           <p className="mt-8 flex max-w-[340px] items-start gap-2 text-center text-xs leading-relaxed text-ink-3">

@@ -47,6 +47,11 @@ as sugestões.
 
 ## Telas
 
+- **Como funciona** (`/como-funciona`) — apresentação pública, com fotos reais
+  das telas, para quem ainda não tem conta. Abre sem sessão e é o link que a
+  tela de entrada oferece antes do formulário. As imagens ficam em
+  `public/apresentacao/` e são capturas do produto rodando sobre a base de
+  demonstração — não ilustrações.
 - **Entrar** — e-mail e senha, **Google**, recuperação de senha e acesso de
   convidado. Todas as telas internas exigem sessão.
 - **Boas-vindas** — configuração inicial do workspace em quatro etapas: tipo de
