@@ -10,9 +10,12 @@ import {
   Clock,
   MessageCircle,
   RotateCcw,
+  Share2,
   Wallet,
 } from "lucide-react";
 import { useBase, useData } from "@/lib/data-context";
+import { useMontado } from "@/lib/use-montado";
+import { interpretarCompartilhado, TextoCompartilhado } from "@/lib/compartilhado";
 import { estaEmAberto, valorLiquido } from "@/lib/finance";
 import { formatCompact, formatCurrency, formatDateShort, todayISO } from "@/lib/format";
 import ModalCobranca from "@/components/ModalCobranca";
@@ -47,6 +50,21 @@ export default function RapidoPage() {
   const { segmento, config, atendimentosCrud, clientesCrud, transacoesCrud } = useData();
   const rotulos = segmento.labels;
   const hoje = todayISO();
+
+  /**
+   * Texto que chegou pelo menu "Compartilhar" do celular — a BASE se registra
+   * como destino, então dá para mandar a mensagem do WhatsApp para cá em vez de
+   * decorar o valor até abrir o app.
+   *
+   * Lido durante a renderização, e não num efeito, para o campo já nascer
+   * preenchido: `useMontado` garante que só o cliente enxerga a URL, sem
+   * divergir do HTML gerado no build.
+   */
+  const montado = useMontado();
+  const compartilhado = useMemo(
+    () => (montado ? interpretarCompartilhado(new URLSearchParams(window.location.search)) : null),
+    [montado]
+  );
 
   const [aba, setAba] = useState<Aba>("receita");
   const [cobrando, setCobrando] = useState<Atendimento | null>(null);
@@ -144,11 +162,14 @@ export default function RapidoPage() {
         ))}
       </div>
 
+      {compartilhado && <AvisoCompartilhado dados={compartilhado} />}
+
       {aba === "receita" && (
         <FormularioReceita
           base={base}
           rotulos={rotulos}
           hoje={hoje}
+          compartilhado={compartilhado}
           onCriarCliente={(nome) =>
             clientesCrud.add({ nome, tipo: "pf", desde: hoje, ativo: true })
           }
@@ -359,12 +380,14 @@ function FormularioReceita({
   base,
   rotulos,
   hoje,
+  compartilhado,
   onSalvar,
   onCriarCliente,
 }: {
   base: ReturnType<typeof useBase>;
   rotulos: { cliente: string; servico: string; atendimento: string };
   hoje: string;
+  compartilhado: TextoCompartilhado | null;
   onSalvar: (dados: Omit<Atendimento, "id">, mensagem: string) => void;
   onCriarCliente: (nome: string) => string;
 }) {
@@ -403,9 +426,25 @@ function FormularioReceita({
   }, [base.atendimentos]);
 
   const [servicoId, setServicoId] = useState(servicos[0]?.id ?? "");
-  const [clienteId, setClienteId] = useState("");
-  const [nomeNovo, setNomeNovo] = useState("");
-  const [valor, setValor] = useState(String(servicos[0]?.valorPadrao ?? ""));
+  /**
+   * Quem veio do compartilhamento já tem o nome de quem escreveu; se esse nome
+   * casar com um cliente que existe, é ele — senão fica escrito no campo, como
+   * cliente novo a confirmar.
+   */
+  const contatoConhecido = compartilhado?.contato
+    ? base.clientes.find(
+        (c) => c.nome.toLowerCase() === compartilhado.contato!.toLowerCase()
+      )
+    : undefined;
+  const [clienteId, setClienteId] = useState(contatoConhecido?.id ?? "");
+  const [nomeNovo, setNomeNovo] = useState(
+    contatoConhecido ? "" : (compartilhado?.contato ?? "")
+  );
+  const [valor, setValor] = useState(
+    compartilhado?.valor !== undefined
+      ? String(compartilhado.valor)
+      : String(servicos[0]?.valorPadrao ?? "")
+  );
 
   const clienteDefinido = clienteId !== "" || nomeNovo.trim() !== "";
   const podeSalvar = clienteDefinido && paraNumero(valor) > 0;
@@ -690,5 +729,34 @@ function ListaAReceber({
         );
       })}
     </ul>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * O que chegou do compartilhamento, mostrado cru.
+ *
+ * A leitura do texto é heurística: pode acertar o valor e errar o nome, ou não
+ * achar valor nenhum. Deixar a mensagem original à vista transforma um palpite
+ * silencioso em algo conferível — a pessoa vê de onde saiu o número antes de
+ * salvar.
+ */
+function AvisoCompartilhado({ dados }: { dados: TextoCompartilhado }) {
+  return (
+    <section
+      aria-label="Texto recebido por compartilhamento"
+      className="rounded-xl border border-brand/25 bg-brand-soft px-3.5 py-3"
+    >
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-brand">
+        <Share2 size={13} className="shrink-0" aria-hidden />
+        {dados.valor !== undefined
+          ? "Valor preenchido a partir da mensagem"
+          : "Mensagem recebida — confira o valor"}
+      </p>
+      <p className="mt-1.5 line-clamp-3 text-[13px] leading-relaxed text-ink-2">
+        “{dados.mensagem || dados.original}”
+      </p>
+    </section>
   );
 }

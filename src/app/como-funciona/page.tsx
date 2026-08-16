@@ -59,6 +59,7 @@ const SECOES: Secao[] = [
       "A tela do celular existe para quem está de pé, entre um atendimento e outro. Escolher o serviço já preenche o preço, o cliente novo nasce ali mesmo digitando o nome, e dois botões grandes separam o que você recebeu do que ainda vai receber.",
     pontos: [
       "Cliente novo criado na hora, sem cadastro prévio",
+      "Compartilhe a mensagem do WhatsApp e o lançamento abre preenchido",
       "Repetir o último lançamento em um toque",
       "Baixa de recebimento em um toque",
     ],

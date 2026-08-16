@@ -137,6 +137,44 @@ Verifica o CRC-16/CCITT-FALSE contra o vetor de referência da especificação,
 a estrutura dos campos aninhados, os limites de nome e cidade, a normalização
 de cada tipo de chave e o texto dos lembretes.
 
+## Instalar no celular e lançar pelo compartilhamento
+
+A BASE é instalável (`public/manifest.webmanifest` + `public/sw.js`): no Android
+o Chrome oferece "adicionar à tela inicial" e, a partir daí, **ela aparece no
+menu Compartilhar do sistema**.
+
+Na prática: você está na conversa do WhatsApp, o cliente escreveu *"consegue
+fazer por R$ 280?"*, você segura a mensagem → Compartilhar → BASE. O lançamento
+rápido abre com **o valor no campo e o nome de quem escreveu no cliente**, e a
+mensagem original fica à vista para conferência.
+
+Não é um robô lendo suas conversas — é você empurrando a informação para
+dentro. Nada sai do aparelho, nada passa por servidor nosso, e nenhuma permissão
+sobre o WhatsApp é pedida. O preço dessa simplicidade é a plataforma:
+**funciona no Android**; o iOS não implementa o compartilhamento para aplicativos
+web.
+
+A leitura do texto é assumidamente heurística — texto de conversa não tem
+formato. Ela extrai o que dá para extrair com confiança e mostra o resto cru,
+porque adivinhar demais produziria lançamento errado com cara de lançamento
+certo:
+
+| Mensagem compartilhada | O que a BASE preenche |
+|---|---|
+| `[15/08 10:32] Marina Duarte: consegue fazer por R$ 280,00?` | valor 280 · cliente Marina Duarte |
+| `recebi 1.200,50 da consulta` | valor 1200,50 |
+| `chego às 10:30` | nada — hora não é dinheiro |
+| `marcamos para 15/08` | nada — data não é dinheiro |
+| `[15/08 10:32] Você: fecho em 300` | valor 300 · sem cliente ("Você" é você) |
+
+```bash
+npm run test:compartilhado
+```
+
+O service worker é **rede primeiro**: sempre busca a versão mais nova e só cai
+no cache quando não há sinal. Um app financeiro servindo uma versão velha de si
+mesmo é pior do que um app offline.
+
 ## A tela do celular
 
 O resto do sistema é feito para **entender** o negócio. `/rapido` é feita para
